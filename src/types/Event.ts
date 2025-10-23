@@ -1,0 +1,41 @@
+import { Types } from 'mongoose';
+
+export interface IEvent {
+  _id?: Types.ObjectId;
+  name: string;
+  description: string;
+  eventType: 'tournament' | 'activity' | 'event' | 'competition';
+  status: 'upcoming' | 'live' | 'completed' | 'cancelled';
+  startDate: Date;
+  endDate?: Date;
+  venue: string;
+  registrationType: 'individual' | 'team' | 'both';
+  pricePerPerson: number;
+  pricePerTeam: number;
+  amenities: string[];
+  facilities: string[];
+  maxParticipants?: number;
+  minParticipants: number;
+  images: {
+    url: string;
+    caption?: string;
+    isPrimary: boolean;
+  }[];
+  totalParticipants: number;
+  totalRevenue: number;
+  registrationDeadline?: Date;
+  isPublished: boolean;
+  tags: string[];
+  organizer: string;
+  contactInfo: {
+    email?: string;
+    phone?: string;
+    whatsapp?: string;
+  };
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export type EventType = IEvent['eventType'];
+export type EventStatus = IEvent['status'];
+export type RegistrationType = IEvent['registrationType'];
