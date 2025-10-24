@@ -13,11 +13,13 @@ export default function AdminEvents() {
     const [editingEvent, setEditingEvent] = useState<IEvent | null>(null);
 
     const [eventForm, setEventForm] = useState({
-        name: '',
+        title: '',
         description: '',
         eventType: 'tournament',
+        sport: 'cricket',
         startDate: '',
-        endDate: '',
+        startTime: '',
+        endTime: '',
         venue: '',
         registrationType: 'individual',
         pricePerPerson: 0,
@@ -27,11 +29,11 @@ export default function AdminEvents() {
         maxParticipants: '',
         minParticipants: 1,
         organizer: '',
-        contactEmail: '',
         contactPhone: '',
         tags: '',
         isPublished: true,
     });
+    const [eventImages, setEventImages] = useState<File[]>([]);
 
     useEffect(() => {
         checkAuth();
@@ -69,35 +71,41 @@ export default function AdminEvents() {
         const token = localStorage.getItem('adminToken');
 
         try {
+            const formData = new FormData();
+
+            // Add all form fields
+            formData.append('title', eventForm.title);
+            formData.append('description', eventForm.description);
+            formData.append('eventType', eventForm.eventType);
+            formData.append('sport', eventForm.sport);
+            formData.append('startDate', eventForm.startDate);
+            formData.append('startTime', eventForm.startTime);
+            formData.append('endTime', eventForm.endTime);
+            formData.append('venue', eventForm.venue);
+            formData.append('registrationType', eventForm.registrationType);
+            formData.append('pricePerPerson', eventForm.pricePerPerson.toString());
+            formData.append('pricePerTeam', eventForm.pricePerTeam.toString());
+            formData.append('amenities', JSON.stringify(eventForm.amenities.split(',').map(a => a.trim()).filter(a => a)));
+            formData.append('facilities', JSON.stringify(eventForm.facilities.split(',').map(f => f.trim()).filter(f => f)));
+            formData.append('maxParticipants', eventForm.maxParticipants || '');
+            formData.append('minParticipants', eventForm.minParticipants.toString());
+            formData.append('organizer', eventForm.organizer);
+            formData.append('contactPhone', eventForm.contactPhone);
+            formData.append('tags', JSON.stringify(eventForm.tags.split(',').map(t => t.trim()).filter(t => t)));
+            formData.append('isPublished', eventForm.isPublished.toString());
+            formData.append('status', 'upcoming');
+
+            // Add images
+            eventImages.forEach((image, index) => {
+                formData.append(`images`, image);
+            });
+
             const response = await fetch('/api/events', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify({
-                    name: eventForm.name,
-                    description: eventForm.description,
-                    eventType: eventForm.eventType,
-                    startDate: eventForm.startDate,
-                    endDate: eventForm.endDate,
-                    venue: eventForm.venue,
-                    registrationType: eventForm.registrationType,
-                    pricePerPerson: eventForm.pricePerPerson,
-                    pricePerTeam: eventForm.pricePerTeam,
-                    amenities: eventForm.amenities.split(',').map(a => a.trim()).filter(a => a),
-                    facilities: eventForm.facilities.split(',').map(f => f.trim()).filter(f => f),
-                    maxParticipants: eventForm.maxParticipants ? Number(eventForm.maxParticipants) : undefined,
-                    minParticipants: eventForm.minParticipants,
-                    organizer: eventForm.organizer,
-                    contactInfo: {
-                        email: eventForm.contactEmail,
-                        phone: eventForm.contactPhone,
-                    },
-                    tags: eventForm.tags.split(',').map(t => t.trim()).filter(t => t),
-                    isPublished: eventForm.isPublished,
-                    status: 'upcoming',
-                }),
+                body: formData,
             });
 
             const data = await response.json();
@@ -122,37 +130,40 @@ export default function AdminEvents() {
         if (!editingEvent) return;
 
         try {
+            const updateData = {
+                eventId: editingEvent._id,
+                updates: {
+                    title: eventForm.title,
+                    description: eventForm.description,
+                    eventType: eventForm.eventType,
+                    sport: eventForm.sport,
+                    startDate: eventForm.startDate,
+                    startTime: eventForm.startTime,
+                    endTime: eventForm.endTime,
+                    venue: eventForm.venue,
+                    registrationType: eventForm.registrationType,
+                    pricePerPerson: eventForm.pricePerPerson,
+                    pricePerTeam: eventForm.pricePerTeam,
+                    amenities: eventForm.amenities.split(',').map(a => a.trim()).filter(a => a),
+                    facilities: eventForm.facilities.split(',').map(f => f.trim()).filter(f => f),
+                    maxParticipants: eventForm.maxParticipants ? Number(eventForm.maxParticipants) : undefined,
+                    minParticipants: eventForm.minParticipants,
+                    organizer: eventForm.organizer,
+                    contactInfo: {
+                        phone: eventForm.contactPhone,
+                    },
+                    tags: eventForm.tags.split(',').map(t => t.trim()).filter(t => t),
+                    isPublished: eventForm.isPublished,
+                },
+            };
+
             const response = await fetch('/api/events', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`,
                 },
-                body: JSON.stringify({
-                    eventId: editingEvent._id,
-                    updates: {
-                        name: eventForm.name,
-                        description: eventForm.description,
-                        eventType: eventForm.eventType,
-                        startDate: eventForm.startDate,
-                        endDate: eventForm.endDate,
-                        venue: eventForm.venue,
-                        registrationType: eventForm.registrationType,
-                        pricePerPerson: eventForm.pricePerPerson,
-                        pricePerTeam: eventForm.pricePerTeam,
-                        amenities: eventForm.amenities.split(',').map(a => a.trim()).filter(a => a),
-                        facilities: eventForm.facilities.split(',').map(f => f.trim()).filter(f => f),
-                        maxParticipants: eventForm.maxParticipants ? Number(eventForm.maxParticipants) : undefined,
-                        minParticipants: eventForm.minParticipants,
-                        organizer: eventForm.organizer,
-                        contactInfo: {
-                            email: eventForm.contactEmail,
-                            phone: eventForm.contactPhone,
-                        },
-                        tags: eventForm.tags.split(',').map(t => t.trim()).filter(t => t),
-                        isPublished: eventForm.isPublished,
-                    },
-                }),
+                body: JSON.stringify(updateData),
             });
 
             const data = await response.json();
@@ -201,11 +212,13 @@ export default function AdminEvents() {
 
     const resetForm = () => {
         setEventForm({
-            name: '',
+            title: '',
             description: '',
             eventType: 'tournament',
+            sport: 'cricket',
             startDate: '',
-            endDate: '',
+            startTime: '',
+            endTime: '',
             venue: '',
             registrationType: 'individual',
             pricePerPerson: 0,
@@ -215,21 +228,23 @@ export default function AdminEvents() {
             maxParticipants: '',
             minParticipants: 1,
             organizer: '',
-            contactEmail: '',
             contactPhone: '',
             tags: '',
             isPublished: true,
         });
+        setEventImages([]);
     };
 
     const startEdit = (event: IEvent) => {
         setEditingEvent(event);
         setEventForm({
-            name: event.name,
+            title: event.title,
             description: event.description,
             eventType: event.eventType,
+            sport: event.sport || 'cricket',
             startDate: new Date(event.startDate).toISOString().split('T')[0],
-            endDate: event.endDate ? new Date(event.endDate).toISOString().split('T')[0] : '',
+            startTime: event.startTime || '',
+            endTime: event.endTime || '',
             venue: event.venue,
             registrationType: event.registrationType,
             pricePerPerson: event.pricePerPerson,
@@ -239,7 +254,6 @@ export default function AdminEvents() {
             maxParticipants: event.maxParticipants?.toString() || '',
             minParticipants: event.minParticipants,
             organizer: event.organizer,
-            contactEmail: event.contactInfo?.email || '',
             contactPhone: event.contactInfo?.phone || '',
             tags: event.tags.join(', '),
             isPublished: event.isPublished,
@@ -288,20 +302,22 @@ export default function AdminEvents() {
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div className="flex justify-between items-center mb-8">
-                    <div>
+                <div className="mb-6">
+                    <div className="text-center mb-4">
                         <h1 className="text-3xl font-bold text-gray-900">Events Management</h1>
                         <p className="text-gray-600">Manage all events and activities</p>
                     </div>
-                    <div className="flex gap-4">
+                    <div className="flex flex-row justify-center gap-3 w-full max-w-xs mx-auto">
                         <Button
                             variant="secondary"
+                            className="min-w-0 px-5 py-2 text-base text-xs font-medium flex-1"
                             onClick={() => router.push('/admin')}
                         >
                             Back to Dashboard
                         </Button>
                         <Button
                             variant="primary"
+                            className="min-w-0 px-5 py-2 text-base text-xs font-medium flex-1"
                             onClick={() => {
                                 resetForm();
                                 setEditingEvent(null);
@@ -322,11 +338,11 @@ export default function AdminEvents() {
                             </h2>
 
                             <form onSubmit={editingEvent ? handleUpdateEvent : handleCreateEvent} className="space-y-6">
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <Input
                                         label="Event Name"
-                                        value={eventForm.name}
-                                        onChange={(e) => setEventForm({ ...eventForm, name: e.target.value })}
+                                        value={eventForm.title}
+                                        onChange={(e) => setEventForm({ ...eventForm, title: e.target.value })}
                                         required
                                     />
                                     <Select
@@ -339,6 +355,26 @@ export default function AdminEvents() {
                                             { value: 'event', label: 'Event' },
                                             { value: 'competition', label: 'Competition' },
                                         ]}
+                                    />
+                                    <Select
+                                        label="Sport/Activity"
+                                        value={eventForm.sport}
+                                        onChange={(e) => setEventForm({ ...eventForm, sport: e.target.value })}
+                                        options={[
+                                            { value: 'cricket', label: 'Cricket' },
+                                            { value: 'football', label: 'Football' },
+                                            { value: 'futsal', label: 'Futsal' },
+                                            { value: 'cycling', label: 'Cycling' },
+                                            { value: 'padel', label: 'Padel' },
+                                            { value: 'badminton', label: 'Badminton' },
+                                            { value: 'tennis', label: 'Tennis' },
+                                            { value: 'basketball', label: 'Basketball' },
+                                            { value: 'volleyball', label: 'Volleyball' },
+                                            { value: 'swimming', label: 'Swimming' },
+                                            { value: 'athletics', label: 'Athletics' },
+                                            { value: 'academic', label: 'Academic' },
+                                        ]}
+                                        required
                                     />
                                 </div>
 
@@ -365,11 +401,22 @@ export default function AdminEvents() {
                                         required
                                     />
                                     <Input
-                                        label="End Date"
-                                        type="date"
-                                        value={eventForm.endDate}
-                                        onChange={(e) => setEventForm({ ...eventForm, endDate: e.target.value })}
+                                        label="Start Time"
+                                        type="time"
+                                        value={eventForm.startTime}
+                                        onChange={(e) => setEventForm({ ...eventForm, startTime: e.target.value })}
+                                        required
                                     />
+                                    <Input
+                                        label="End Time"
+                                        type="time"
+                                        value={eventForm.endTime}
+                                        onChange={(e) => setEventForm({ ...eventForm, endTime: e.target.value })}
+                                        required
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <Input
                                         label="Venue"
                                         value={eventForm.venue}
@@ -377,9 +424,6 @@ export default function AdminEvents() {
                                         placeholder="Event location"
                                         required
                                     />
-                                </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <Select
                                         label="Registration Type"
                                         value={eventForm.registrationType}
@@ -390,6 +434,9 @@ export default function AdminEvents() {
                                             { value: 'both', label: 'Both Individual & Team' },
                                         ]}
                                     />
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <Input
                                         label="Max Participants"
                                         type="number"
@@ -429,7 +476,7 @@ export default function AdminEvents() {
                                             placeholder="Food, Transport, Equipment..."
                                         />
                                     </div>
-                                    <div>
+                                    {/* <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
                                             Facilities (comma-separated)
                                         </label>
@@ -440,7 +487,7 @@ export default function AdminEvents() {
                                             rows={2}
                                             placeholder="Ground, Changing Rooms, First Aid..."
                                         />
-                                    </div>
+                                    </div> */}
                                 </div>
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -464,13 +511,37 @@ export default function AdminEvents() {
                                     </div>
                                 </div>
 
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                                        Event Images
+                                    </label>
+                                    <input
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            if (e.target.files) {
+                                                setEventImages(Array.from(e.target.files));
+                                            }
+                                        }}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    />
+                                    {eventImages.length > 0 && (
+                                        <div className="mt-2">
+                                            <p className="text-sm text-gray-600">
+                                                Selected {eventImages.length} image(s)
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <Input
+                                    {/* <Input
                                         label="Contact Email"
                                         type="email"
                                         value={eventForm.contactEmail}
                                         onChange={(e) => setEventForm({ ...eventForm, contactEmail: e.target.value })}
-                                    />
+                                    /> */}
                                     <Input
                                         label="Contact Phone"
                                         value={eventForm.contactPhone}
@@ -541,7 +612,7 @@ export default function AdminEvents() {
                                 </div>
 
                                 <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-2">
-                                    {event.name}
+                                    {event.title}
                                 </h3>
 
                                 <p className="text-gray-600 mb-4 line-clamp-3">{event.description}</p>
@@ -550,6 +621,10 @@ export default function AdminEvents() {
                                     <div className="flex justify-between">
                                         <span>Date:</span>
                                         <span className="font-medium">{new Date(event.startDate).toLocaleDateString()}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span>Time:</span>
+                                        <span className="font-medium">{event.startTime} - {event.endTime}</span>
                                     </div>
                                     <div className="flex justify-between">
                                         <span>Venue:</span>
@@ -576,15 +651,15 @@ export default function AdminEvents() {
                                 <div className="mt-4 space-y-2">
                                     <Button
                                         variant="primary"
-                                        className="w-full"
-                                        onClick={() => window.open(`/events/${event._id}`, '_blank')}
+                                        className="w-full mb-4"
+                                        onClick={() => window.open(`/events/${event._id}`,)}
                                     >
                                         View Event Page
                                     </Button>
                                     <Button
                                         variant="secondary"
                                         className="w-full"
-                                        onClick={() => window.open(`/admin/events/${event._id}/participants`, '_blank')}
+                                        onClick={() => window.open(`/admin/events/${event._id}/participants`)}
                                     >
                                         View Participants ({event.totalParticipants})
                                     </Button>

@@ -99,7 +99,7 @@ export default function EventDetail() {
                     <div className="h-96 bg-gradient-to-r from-purple-600/20 to-blue-600/20">
                         <img
                             src={primaryImage.url}
-                            alt={event.name}
+                            alt={event.title}
                             className="w-full h-full object-cover opacity-30"
                         />
                     </div>
@@ -113,7 +113,7 @@ export default function EventDetail() {
                                     {getEventTypeBadge(event.eventType)}
                                     {getStatusBadge(event.status)}
                                 </div>
-                                <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{event.name}</h1>
+                                <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{event.title}</h1>
                                 <p className="text-xl text-gray-200 leading-relaxed">{event.description}</p>
                             </div>
                             <div className="mt-6 md:mt-0">
@@ -143,7 +143,7 @@ export default function EventDetail() {
                                             <div key={index} className="relative group">
                                                 <img
                                                     src={image.url}
-                                                    alt={image.caption || event.name}
+                                                    alt={image.caption || event.title}
                                                     className="w-full h-48 object-cover rounded-lg hover:scale-105 transition-transform duration-300"
                                                 />
                                                 {image.caption && (
@@ -166,11 +166,14 @@ export default function EventDetail() {
                                     <div>
                                         <h4 className="text-lg font-semibold text-purple-300 mb-2">Date & Time</h4>
                                         <p className="text-gray-200">
-                                            <strong>Start:</strong> {new Date(event.startDate).toLocaleDateString()} at {new Date(event.startDate).toLocaleTimeString()}
+                                            <strong>Date:</strong> {new Date(event.startDate).toLocaleDateString()}
                                         </p>
-                                        {event.endDate && (
+                                        <p className="text-gray-200">
+                                            <strong>Start Time:</strong> {event.startTime}
+                                        </p>
+                                        {event.endTime && (
                                             <p className="text-gray-200">
-                                                <strong>End:</strong> {new Date(event.endDate).toLocaleDateString()} at {new Date(event.endDate).toLocaleTimeString()}
+                                                <strong>End:</strong> {new Date(event.endTime).toLocaleDateString()} at {new Date(event.endTime).toLocaleTimeString()}
                                             </p>
                                         )}
                                     </div>
@@ -300,15 +303,6 @@ export default function EventDetail() {
                                         <h4 className="text-purple-300 font-semibold">Organizer</h4>
                                         <p className="text-gray-200">{event.organizer}</p>
                                     </div>
-
-                                    {event.contactInfo.email && (
-                                        <div>
-                                            <h4 className="text-purple-300 font-semibold">Email</h4>
-                                            <a href={`mailto:${event.contactInfo.email}`} className="text-blue-300 hover:text-blue-200">
-                                                {event.contactInfo.email}
-                                            </a>
-                                        </div>
-                                    )}
 
                                     {event.contactInfo.phone && (
                                         <div>

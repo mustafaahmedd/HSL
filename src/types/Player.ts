@@ -31,7 +31,7 @@ export interface IPlayer {
   updatedAt?: Date;
 }
 
-export type PlayerType = 'Batsman' | 'Bowler' | 'Batting All-Rounder' | 'Bowling All-Rounder';
+export type PlayerType = 'Batsman' | 'Bowler' | 'Batting All Rounder' | 'Bowling All Rounder';
 export type PlayerCategory = 'Platinum' | 'Diamond' | 'Gold' | 'Silver' | 'Bronze';
 export type PlayerRole = IPlayer['role'];
 export type PlayerStatus = 'available' | 'sold';

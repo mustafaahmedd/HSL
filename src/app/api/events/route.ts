@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Event from '@/models/Event';
 import { isAuthenticated } from '@/lib/auth';
+import { extractFiles, saveFiles } from '@/lib/upload';
 
 // GET - Fetch all events (public)
 export async function GET(request: NextRequest) {
@@ -54,18 +55,69 @@ export async function POST(request: NextRequest) {
   try {
     await dbConnect();
 
-    const eventData = await request.json();
+    const formData = await request.formData();
+    
+    // Extract form fields
+    const eventData = {
+      title: formData.get('title') as string,
+      description: formData.get('description') as string,
+      eventType: formData.get('eventType') as string,
+      sport: formData.get('sport') as string,
+      startDate: formData.get('startDate') as string,
+      startTime: formData.get('startTime') as string,
+      endTime: formData.get('endTime') as string,
+      venue: formData.get('venue') as string,
+      registrationType: formData.get('registrationType') as string,
+      pricePerPerson: Number(formData.get('pricePerPerson')),
+      pricePerTeam: Number(formData.get('pricePerTeam')),
+      amenities: JSON.parse(formData.get('amenities') as string || '[]'),
+      facilities: JSON.parse(formData.get('facilities') as string || '[]'),
+      maxParticipants: formData.get('maxParticipants') ? Number(formData.get('maxParticipants')) : undefined,
+      minParticipants: Number(formData.get('minParticipants')),
+      organizer: formData.get('organizer') as string,
+      contactInfo: {
+        phone: formData.get('contactPhone') as string,
+      },
+      tags: JSON.parse(formData.get('tags') as string || '[]'),
+      isPublished: formData.get('isPublished') === 'true',
+      status: formData.get('status') as string,
+    };
 
     // Validate required fields
-    const requiredFields = ['name', 'description', 'eventType', 'startDate', 'venue', 'organizer'];
+    const requiredFields = ['title', 'description', 'eventType', 'startDate', 'startTime', 'endTime', 'venue', 'organizer'];
     for (const field of requiredFields) {
-      if (!eventData[field]) {
+      if (!eventData[field as keyof typeof eventData]) {
         return NextResponse.json(
           { error: `${field} is required` },
           { status: 400 }
         );
       }
     }
+
+    // Handle image uploads
+    const images: { url: string; caption?: string; isPrimary: boolean }[] = [];
+    const imageFiles = extractFiles(formData, 'images');
+    
+    if (imageFiles.length > 0) {
+      try {
+        const uploadedFiles = await saveFiles(imageFiles, 'events');
+        
+        uploadedFiles.forEach((file, index) => {
+          images.push({
+            url: file.url,
+            caption: `Event image ${index + 1}`,
+            isPrimary: index === 0
+          });
+        });
+      } catch (error: any) {
+        return NextResponse.json(
+          { error: `Image upload failed: ${error.message}` },
+          { status: 400 }
+        );
+      }
+    }
+
+    (eventData as any).images = images;
 
     const event = await Event.create(eventData);
 
@@ -74,10 +126,10 @@ export async function POST(request: NextRequest) {
       message: 'Event created successfully',
       event
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Create event error:', error);
     return NextResponse.json(
-      { error: 'Failed to create event' },
+      { message: 'Failed to create event', error: error.message },
       { status: 500 }
     );
   }
@@ -93,6 +145,7 @@ export async function PUT(request: NextRequest) {
     await dbConnect();
 
     const { eventId, updates } = await request.json();
+    console.log('Update event data:', { eventId, updates });
 
     if (!eventId) {
       return NextResponse.json(
@@ -114,6 +167,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    console.log('Updated event:', event);
     return NextResponse.json({
       success: true,
       message: 'Event updated successfully',

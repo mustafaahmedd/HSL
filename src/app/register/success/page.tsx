@@ -21,7 +21,6 @@ export default function RegistrationSuccess() {
             Your registration has been submitted successfully. You will be contacted by the admin with further details.
           </p>
         </div>
-        
         <Link href="/">
           <Button variant="primary" className="w-full">
             Back to Home

@@ -192,7 +192,7 @@ export default function HSLHome() {
                   <div className="relative">
                     <img
                       src={event.images?.[0]?.url || '/api/placeholder/400/300'}
-                      alt={event.name}
+                      alt={event.title}
                       className="w-full h-48 object-cover"
                     />
                     <div className="absolute top-4 left-4">
@@ -203,7 +203,7 @@ export default function HSLHome() {
                     </div>
                   </div>
                   <div className="p-6">
-                    <h3 className="font-bold text-white mb-3 text-lg line-clamp-2">{event.name}</h3>
+                    <h3 className="font-bold text-white mb-3 text-lg line-clamp-2">{event.title}</h3>
                     <p className="text-gray-300 mb-4 line-clamp-2">{event.description}</p>
                     <div className="space-y-2 text-sm text-gray-300">
                       <div className="flex justify-between">
@@ -223,12 +223,12 @@ export default function HSLHome() {
                     </div>
                     <div className="mt-4 space-y-2">
                       <Link href={`/events/${event._id}`}>
-                        <Button variant="primary" className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                        <Button variant="primary" className="w-full mb-4 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
                           View Details
                         </Button>
                       </Link>
                       {event.status === 'upcoming' && (
-                        <Link href={`/events/${event._id}/register`}>
+                        <Link href={`/register?event=${event._id}`}>
                           <Button variant="secondary" className="w-full bg-white/10 backdrop-blur-sm text-white border-2 border-white/20 hover:bg-white/20">
                             Register Now
                           </Button>
@@ -253,16 +253,65 @@ export default function HSLHome() {
         </div>
       </div>
 
+      {/* Auction Section */}
+
+      <div className="py-20 bg-gradient-to-r from-green-900 via-emerald-900 to-teal-900">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          {/* <div className="text-center mb-16">
+            <h2 className="text-4xl font-bold text-white mb-6">🏏 Cricket Player Auctions</h2>
+            <p className="text-xl text-gray-200 mb-8">Build your dream cricket team through exciting player auctions</p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/auction">
+                <Button variant="primary" size="lg" className="px-8 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700">
+                  View Auctions
+                </Button>
+              </Link>
+              <Link href="/register">
+                <Button variant="secondary" size="lg" className="px-8 py-3 bg-white/10 backdrop-blur-sm text-white border-2 border-white/20 hover:bg-white/20">
+                  Register as Player
+                </Button>
+              </Link>
+            </div>
+          </div> */}
+
+          <h2 className="text-4xl font-bold text-white mb-6">The Hikmah Student Life Way</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl p-6 hover:bg-white/20 transition-all duration-300">
+              <div className="text-4xl mb-4">🎯</div>
+              <h3 className="text-xl font-bold text-white mb-3">Strategic Bidding</h3>
+              <p className="text-gray-200 text-sm">Plan your budget and bid strategically to get the best players for your team</p>
+            </div>
+            <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl p-6 hover:bg-white/20 transition-all duration-300">
+              <div className="text-4xl mb-4">⚡</div>
+              <h3 className="text-xl font-bold text-white mb-3">Live Auctions</h3>
+              <p className="text-gray-200 text-sm">Participate in real-time auctions with live bidding and instant updates</p>
+            </div>
+            <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl p-6 hover:bg-white/20 transition-all duration-300">
+              <div className="text-4xl mb-4">🏆</div>
+              <h3 className="text-xl font-bold text-white mb-3">Team Building</h3>
+              <p className="text-gray-200 text-sm">Create balanced teams with players from different categories and skill levels</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Admin Section */}
       <div className="py-16 bg-gradient-to-r from-slate-800 to-gray-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl font-bold text-white mb-6">Admin Access</h2>
-          <p className="text-gray-300 mb-8">Manage events, players, and tournaments</p>
-          <Link href="/admin">
-            <Button variant="primary" size="lg" className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
-              Admin Dashboard
-            </Button>
-          </Link>
+          <p className="text-gray-300 mb-8">Manage events, players, tournaments, and auctions</p>
+          <div className="flex flex-col gap-4 justify-center">
+            <Link href="/admin">
+              <Button variant="primary" size="lg" className="px-8 py-3 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700">
+                Admin Dashboard
+              </Button>
+            </Link>
+            <Link href="/admin/auction">
+              <Button variant="secondary" size="lg" className="px-8 py-3 bg-white/10 backdrop-blur-sm text-white border-2 border-white/20 hover:bg-white/20">
+                Auction Control
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 

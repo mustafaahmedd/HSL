@@ -5,57 +5,67 @@ import { useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
 import { Card } from '@/components/ui';
 import { ITeam, ITeamWithPlayers } from '@/types/Team';
-import { ITournament } from '@/types/Tournament';
+import { IEvent } from '@/types/Event';
 
 export default function TeamsView() {
   // Wrap useSearchParams in Suspense to avoid errors in the client component in Next.js app router.
   // (Place Suspense boundary in your page/layout as well for optimal effect)
 
-  let tournamentId: string | null = null;
+  let eventId: string | null = null;
 
-  function SearchParamsReader(props: { onTournamentId: (id: string | null) => void }) {
+  function SearchParamsReader(props: { onEventId: (id: string | null) => void }) {
     const searchParams = useSearchParams();
     useEffect(() => {
-      props.onTournamentId(searchParams.get('tournament'));
+      props.onEventId(searchParams.get('event'));
     }, [searchParams]);
     return null;
   }
 
   // Inside your component's body:
-  const [tournamentIdState, setTournamentIdState] = useState<string | null>(null);
+  const [eventIdState, setEventIdState] = useState<string | null>(null);
 
   // Use Suspense to wrap the search params hook
   // Render SearchParamsReader in the render return part, not here directly.
   // Wherever you have your JSX return, include:
-  // <Suspense fallback={null}><SearchParamsReader onTournamentId={setTournamentIdState} /></Suspense>
+  // <Suspense fallback={null}><SearchParamsReader onEventId={setEventIdState} /></Suspense>
 
-  // Use tournamentIdState everywhere in place of tournamentId
+  // Use eventIdState everywhere in place of eventId
 
 
   const [teams, setTeams] = useState<ITeamWithPlayers[]>([]);
-  const [tournament, setTournament] = useState<ITournament | null>(null);
+  const [event, setEvent] = useState<IEvent | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchTeamsData();
-  }, [tournamentId]);
+  }, [eventIdState]);
 
   const fetchTeamsData = async () => {
     try {
-      // Fetch teams and tournament data
-      const response = await fetch('/api/admin/config');
+      // Fetch teams and event data
+      const response = await fetch('/api/events');
       const data = await response.json();
 
       if (data.success) {
-        // Find the tournament
-        if (tournamentId) {
-          const found = data.tournaments.find((t: ITournament) => t._id?.toString() === tournamentId);
-          setTournament(found || null);
+        // Find the event
+        if (eventIdState) {
+          const found = data.events.find((e: IEvent) => e._id?.toString() === eventIdState);
+          setEvent(found || null);
         }
 
-        // For demo purposes, showing all teams
-        // In production, you'd filter by tournament
-        setTeams(data.teams);
+        // Fetch teams for this event
+        if (eventIdState) {
+          const teamsResponse = await fetch(`/api/teams?eventId=${eventIdState}`);
+          const teamsData = await teamsResponse.json();
+
+          if (teamsData.success) {
+            setTeams(teamsData.teams);
+          }
+        } else {
+          // For demo purposes, showing all teams
+          // In production, you'd filter by event
+          setTeams([]);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch teams:', error);
@@ -84,8 +94,8 @@ export default function TeamsView() {
     const typeColors = {
       'Batsman': 'bg-green-100 text-green-800',
       'Bowler': 'bg-red-100 text-red-800',
-      'Batting All-Rounder': 'bg-indigo-100 text-indigo-800',
-      'Bowling All-Rounder': 'bg-pink-100 text-pink-800',
+      'Batting All Rounder': 'bg-indigo-100 text-indigo-800',
+      'Bowling All Rounder': 'bg-pink-100 text-pink-800',
     };
 
     return (
@@ -111,9 +121,9 @@ export default function TeamsView() {
           <h1 className="text-4xl font-bold text-gray-900 mb-2">
             Team Rosters
           </h1>
-          {tournament && (
+          {event && (
             <p className="text-lg text-gray-600">
-              {tournament.name}
+              {event.title}
             </p>
           )}
         </div>

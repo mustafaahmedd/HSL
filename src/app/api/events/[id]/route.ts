@@ -10,6 +10,15 @@ export async function GET(
     await dbConnect();
 
     const { id } = await params;
+    
+    // Validate id parameter
+    if (!id || id === 'undefined') {
+      return NextResponse.json(
+        { error: 'Invalid event ID' },
+        { status: 400 }
+      );
+    }
+
     const event = await Event.findById(id);
 
     if (!event) {

@@ -4,47 +4,49 @@ export interface IRegistration {
   _id?: Types.ObjectId;
   eventId: Types.ObjectId;
   eventName: string;
-  eventType: 'tournament' | 'activity' | 'event' | 'competition';
-  registrationType: 'individual' | 'team' | 'both';
   
   // Personal Information
+  playerId?: Types.ObjectId;
   name: string;
-  email: string;
-  phone: string;
-  studentId: string;
-  department: string;
-  emergencyContact: string;
+  contactNo: string;
+  isHikmahStudent: boolean;
+  courseEnrolled?: string;
+  darseNizamiYear?: string;
+  currentCourseYear?: string;
+  timings: string;
+  photoUrl: string;
+
   
-  // Team Information (if applicable)
-  teamName?: string;
-  teamMembers?: string[];
-  
-  // Registration Details
-  registrationDate: Date;
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
-  paymentStatus: 'pending' | 'paid' | 'refunded';
-  amountPaid: number;
-  
-  // Additional Information
+  // Sport-specific details
   specialRequirements?: string;
-  notes?: string;
+  teamName?: string;
+  playBothTournaments?: boolean;
+  skillLevel?: string;
+  iconPlayerRequest?: boolean;
+  selfAssignedCategory?: string;
+  type?: string;
+  position?: string;
+  experience?: string;
+  level?: string;
   
-  // Admin Management Fields
+  // Registration details
+  paymentMethod?: string;
+  paymentStatus?: string;
+  amountPaid?: number;
+  assurance?: boolean;
+  
+  // Status
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+  
+  // Admin Management
   adminNotes?: string;
   finalizedDetails?: {
     finalName?: string;
     finalEmail?: string;
     finalPhone?: string;
-    finalStudentId?: string;
-    finalDepartment?: string;
-    finalEmergencyContact?: string;
     finalTeamName?: string;
-    finalTeamMembers?: string[];
-    finalSpecialRequirements?: string;
   };
-  
-  // Player Reference (if player exists)
-  playerId?: Types.ObjectId;
   
   // Admin Management
   approvedBy?: Types.ObjectId;

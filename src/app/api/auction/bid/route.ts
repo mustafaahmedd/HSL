@@ -1,123 +1,184 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
+import Auction, { Bid, AuctionSession } from '@/models/Auction';
 import Player from '@/models/Player';
 import Team from '@/models/Team';
-import Tournament from '@/models/Tournament';
 import { isAuthenticated } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
-  if (!await isAuthenticated(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
+    const isAuth = await isAuthenticated(request);
+    if (!isAuth) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
     await dbConnect();
 
-    const { playerId, teamId, bidAmount, tournamentId } = await request.json();
+    const body = await request.json();
+    const { auctionId, playerId, teamId, amount } = body;
 
-    // Validate inputs
-    if (!playerId || !teamId || !bidAmount || !tournamentId) {
+    // Validate required fields
+    if (!auctionId || !playerId || !teamId || !amount) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { success: false, error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Get player, team, and tournament
-    const [player, team, tournament] = await Promise.all([
-      Player.findById(playerId),
-      Team.findById(teamId),
-      Tournament.findById(tournamentId)
-    ]);
+    // Check if auction exists and is live
+    const auction = await Auction.findById(auctionId);
+    if (!auction) {
+      return NextResponse.json(
+        { success: false, error: 'Auction not found' },
+        { status: 404 }
+      );
+    }
 
+    if (auction.status !== 'live') {
+      return NextResponse.json(
+        { success: false, error: 'Auction is not live' },
+        { status: 400 }
+      );
+    }
+
+    // Check if player exists and is available
+    const player = await Player.findById(playerId);
     if (!player) {
-      return NextResponse.json({ error: 'Player not found' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: 'Player not found' },
+        { status: 404 }
+      );
     }
+
+    if (player.status !== 'available') {
+      return NextResponse.json(
+        { success: false, error: 'Player is not available' },
+        { status: 400 }
+      );
+    }
+
+    // Check if team exists and has enough budget
+    const team = await Team.findById(teamId);
     if (!team) {
-      return NextResponse.json({ error: 'Team not found' }, { status: 404 });
-    }
-    if (!tournament) {
-      return NextResponse.json({ error: 'Tournament not found' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: 'Team not found' },
+        { status: 404 }
+      );
     }
 
-    // Check if player is already sold
-    if (player.status === 'sold') {
+    if (team.pointsLeft < amount) {
       return NextResponse.json(
-        { error: 'Player is already sold' },
+        { success: false, error: 'Insufficient budget' },
         { status: 400 }
       );
     }
 
-    // Check minimum bid
-    const category = player.category || player.selfAssignedCategory;
-    const minBid = tournament.minBidByCategory.get(category) || 0;
-    if (bidAmount < minBid) {
+    // Check if bid meets minimum requirements
+    if (amount < auction.basePrice) {
       return NextResponse.json(
-        { error: `Bid amount must be at least ${minBid} for ${category} category` },
+        { success: false, error: `Bid must be at least ${auction.basePrice}` },
         { status: 400 }
       );
     }
 
-    // Check if team has enough budget
-    if (team.pointsLeft < bidAmount) {
-      return NextResponse.json(
-        { error: 'Team does not have enough budget' },
-        { status: 400 }
-      );
-    }
-
-    // Check squad cap
-    const currentPlayers = await Player.find({ 
-      teamId: teamId, 
-      category: category 
+    // Get current highest bid for this player
+    const currentHighestBid = await Bid.findOne({
+      auctionId,
+      playerId,
+      isWinning: true,
     });
-    const squadCap = tournament.squadCapByCategory.get(category) || Infinity;
-    
-    if (currentPlayers.length >= squadCap) {
-      return NextResponse.json(
-        { 
-          error: `Team has reached the maximum limit of ${squadCap} ${category} players`,
-          warning: true,
-          currentCount: currentPlayers.length,
-          maxAllowed: squadCap
-        },
-        { status: 400 }
-      );
+
+    if (currentHighestBid) {
+      const minimumBid = currentHighestBid.amount + auction.biddingIncrement;
+      if (amount < minimumBid) {
+        return NextResponse.json(
+          { success: false, error: `Bid must be at least ${minimumBid}` },
+          { status: 400 }
+        );
+      }
     }
 
-    // Process the bid
-    player.status = 'sold';
-    player.teamId = teamId;
-    player.bidPrice = bidAmount;
-    await player.save();
+    // Create new bid
+    const bid = new Bid({
+      auctionId,
+      playerId,
+      teamId,
+      amount,
+      timestamp: new Date(),
+      isWinning: true,
+      bidderInfo: {
+        teamName: team.name,
+        ownerName: team.owner,
+      },
+    });
 
-    // Update team
-    team.players.push(player._id);
-    team.pointsSpent += bidAmount;
-    team.pointsLeft = team.totalBudget - team.pointsSpent;
-    await team.save();
+    // Mark previous winning bid as not winning
+    if (currentHighestBid) {
+      currentHighestBid.isWinning = false;
+      await currentHighestBid.save();
+    }
 
-    // Populate the team with players for response
-    await team.populate('players');
+    await bid.save();
+
+    // Update auction session
+    const session = await AuctionSession.findOne({ auctionId });
+    if (session) {
+      session.currentHighestBid = bid._id;
+      session.biddingHistory.push(bid._id);
+      await session.save();
+    }
+
+    // Populate bid with player and team info
+    const populatedBid = await Bid.findById(bid._id)
+      .populate('playerId', 'name type category')
+      .populate('teamId', 'name owner');
 
     return NextResponse.json({
       success: true,
-      message: 'Bid successful',
-      player,
-      team,
-      transaction: {
-        playerId: player._id,
-        playerName: player.name,
-        teamId: team._id,
-        teamName: team.name,
-        bidAmount,
-        remainingBudget: team.pointsLeft
-      }
+      bid: populatedBid,
+      message: 'Bid placed successfully',
     });
   } catch (error) {
-    console.error('Bid error:', error);
+    console.error('Error placing bid:', error);
     return NextResponse.json(
-      { error: 'Failed to process bid' },
+      { success: false, error: 'Failed to place bid' },
+      { status: 500 }
+    );
+  }
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const isAuth = await isAuthenticated(request);
+    if (!isAuth) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    await dbConnect();
+
+    const { searchParams } = new URL(request.url);
+    const auctionId = searchParams.get('auctionId');
+    const playerId = searchParams.get('playerId');
+    const teamId = searchParams.get('teamId');
+
+    let query: any = {};
+    if (auctionId) query.auctionId = auctionId;
+    if (playerId) query.playerId = playerId;
+    if (teamId) query.teamId = teamId;
+
+    const bids = await Bid.find(query)
+      .populate('playerId', 'name type category')
+      .populate('teamId', 'name owner')
+      .sort({ timestamp: -1 });
+
+    return NextResponse.json({
+      success: true,
+      bids,
+    });
+  } catch (error) {
+    console.error('Error fetching bids:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to fetch bids' },
       { status: 500 }
     );
   }

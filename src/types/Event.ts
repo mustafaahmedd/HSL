@@ -2,12 +2,14 @@ import { Types } from 'mongoose';
 
 export interface IEvent {
   _id?: Types.ObjectId;
-  name: string;
+  title: string;
   description: string;
   eventType: 'tournament' | 'activity' | 'event' | 'competition';
+  sport: 'cricket' | 'football' | 'futsal' | 'cycling' | 'padel' | 'badminton' | 'tennis' | 'basketball' | 'volleyball' | 'swimming' | 'athletics' | 'academic';
   status: 'upcoming' | 'live' | 'completed' | 'cancelled';
   startDate: Date;
-  endDate?: Date;
+  startTime: string;
+  endTime: string;
   venue: string;
   registrationType: 'individual' | 'team' | 'both';
   pricePerPerson: number;
@@ -28,9 +30,7 @@ export interface IEvent {
   tags: string[];
   organizer: string;
   contactInfo: {
-    email?: string;
     phone?: string;
-    whatsapp?: string;
   };
   createdAt?: Date;
   updatedAt?: Date;

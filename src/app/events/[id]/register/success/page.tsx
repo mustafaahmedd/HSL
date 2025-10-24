@@ -44,7 +44,7 @@ export default function RegistrationSuccess() {
 
         const message = `Assalam-o-Alaikum!
 
-I have registered for "${event.name}".
+I have registered for "${event.title}".
 
 My Details:
 • Name: ${registrationData.name}
@@ -52,7 +52,7 @@ My Details:
 • Phone: ${registrationData.phone}
 
 Event Details:
-• Event: ${event.name}
+• Event: ${event.title}
 • Date: ${new Date(event.startDate).toLocaleDateString()}
 • Amount: PKR ${event.registrationType === 'team' ? event.pricePerTeam : event.pricePerPerson}
 
@@ -101,7 +101,7 @@ Jazak'Allah!`;
                         </svg>
                     </div>
                     <h1 className="text-4xl font-bold text-white mb-4">Registration Successful!</h1>
-                    <p className="text-xl text-gray-200">Your registration for "{event.name}" has been submitted successfully.</p>
+                    <p className="text-xl text-gray-200">Your registration for "{event.title}" has been submitted successfully.</p>
                 </div>
 
                 {/* Event Details Card */}
@@ -110,7 +110,7 @@ Jazak'Allah!`;
                         <h2 className="text-2xl font-bold text-white mb-4">Event Details</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-white">
                             <div>
-                                <strong>Event Name:</strong> {event.name}
+                                <strong>Event Name:</strong> {event.title}
                             </div>
                             <div>
                                 <strong>Type:</strong> {event.eventType}

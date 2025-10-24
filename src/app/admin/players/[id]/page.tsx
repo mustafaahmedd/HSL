@@ -17,8 +17,8 @@ const categories = [
 const playerTypes = [
     { value: 'Batsman', label: 'Batsman' },
     { value: 'Bowler', label: 'Bowler' },
-    { value: 'Batting All-Rounder', label: 'Batting All-Rounder' },
-    { value: 'Bowling All-Rounder', label: 'Bowling All-Rounder' },
+    { value: 'Batting All Rounder', label: 'Batting All Rounder' },
+    { value: 'Bowling All Rounder', label: 'Bowling All Rounder' },
 ];
 
 export default function PlayerDetail() {

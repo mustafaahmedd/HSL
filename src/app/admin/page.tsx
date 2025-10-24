@@ -264,6 +264,11 @@ export default function AdminDashboard() {
               Login
             </Button>
           </form>
+          <div className="mt-4 flex justify-center">
+            <a href="/" className="text-blue-600 hover:underline">
+              ← Back to Home
+            </a>
+          </div>
         </Card>
       </div>
     );
@@ -509,7 +514,7 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Players Section */}
-        <Card title="Registered Players">
+        {/* <Card title="Registered Players">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -582,7 +587,7 @@ export default function AdminDashboard() {
               </tbody>
             </table>
           </div>
-        </Card>
+        </Card> */}
       </div>
     </div>
   );

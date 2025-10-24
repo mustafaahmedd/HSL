@@ -36,19 +36,21 @@ const PlayerSchema = new Schema<IPlayer>(
     },
     playBothTournaments: {
       type: Boolean,
-      required: true,
+      default: false,
     },
     skillLevel: {
       type: String,
-      required: true,
+      trim: true,
+      default: 'Beginner',
     },
     iconPlayerRequest: {
       type: Boolean,
-      required: true,
+      default: false,
     },
     selfAssignedCategory: {
       type: String,
-      required: true,
+      trim: true,
+      default: 'Bronze',
     },
     photoUrl: {
       type: String,
@@ -58,7 +60,7 @@ const PlayerSchema = new Schema<IPlayer>(
     // Admin Override Fields
     type: {
       type: String,
-      enum: ['Batsman', 'Bowler', 'Batting All-Rounder', 'Bowling All-Rounder'],
+      enum: ['Batsman', 'Bowler', 'Batting All Rounder', 'Bowling All Rounder'],
     },
     category: {
       type: String,

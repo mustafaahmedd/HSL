@@ -98,19 +98,13 @@ export default function EventParticipants() {
     const startEditing = (registration: IRegistration) => {
         setEditingRegistration(registration._id!.toString());
         setEditForm({
-            name: registration.name,
-            email: registration.email,
-            phone: registration.phone,
-            studentId: registration.studentId,
-            department: registration.department,
-            emergencyContact: registration.emergencyContact,
+            title: registration.eventName,
+            phone: registration.contactNo,
             teamName: registration.teamName,
-            teamMembers: registration.teamMembers?.join(', '),
             specialRequirements: registration.specialRequirements,
             status: registration.status,
             paymentStatus: registration.paymentStatus,
             amountPaid: registration.amountPaid,
-            notes: registration.notes || '',
         });
     };
 
@@ -166,7 +160,7 @@ export default function EventParticipants() {
                 {/* Event Header */}
                 {event && (
                     <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">{event.name}</h1>
+                        <h1 className="text-3xl font-bold text-gray-900 mb-2">{event.title}</h1>
                         <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                             <span><strong>Type:</strong> {event.eventType}</span>
                             <span><strong>Date:</strong> {new Date(event.startDate).toLocaleDateString()}</span>
@@ -218,24 +212,12 @@ export default function EventParticipants() {
                                                     <div className="text-sm font-medium text-gray-900">
                                                         {registration.name}
                                                     </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        {registration.studentId}
-                                                    </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        {registration.department}
-                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div>
                                                     <div className="text-sm text-gray-900">
-                                                        {registration.email}
-                                                    </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        {registration.phone}
-                                                    </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        Emergency: {registration.emergencyContact}
+                                                        {registration.contactNo}
                                                     </div>
                                                 </div>
                                             </td>
@@ -245,9 +227,6 @@ export default function EventParticipants() {
                                                         <div className="text-sm font-medium text-gray-900">
                                                             {registration.teamName}
                                                         </div>
-                                                        <div className="text-sm text-gray-500">
-                                                            {registration.teamMembers?.join(', ')}
-                                                        </div>
                                                     </div>
                                                 ) : (
                                                     <span className="text-sm text-gray-500">Individual</span>
@@ -256,7 +235,7 @@ export default function EventParticipants() {
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div>
                                                     <div className="text-sm text-gray-900">
-                                                        {new Date(registration.registrationDate).toLocaleDateString()}
+                                                        {new Date(registration?.createdAt || '').toLocaleDateString()}
                                                     </div>
                                                     {registration.specialRequirements && (
                                                         <div className="text-sm text-gray-500">
@@ -270,7 +249,7 @@ export default function EventParticipants() {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex flex-col gap-1">
-                                                    {getPaymentStatusBadge(registration.paymentStatus)}
+                                                    {getPaymentStatusBadge(registration?.paymentStatus || '')}
                                                     <span className="text-sm text-gray-500">
                                                         PKR {registration.amountPaid}
                                                     </span>

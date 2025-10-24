@@ -5,7 +5,6 @@ import Team from '@/models/Team';
 import { isAuthenticated } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
-  console.log("GET request received");
   
   try {
     await dbConnect();

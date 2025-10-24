@@ -192,7 +192,7 @@ export default function AdminRegistrations() {
                                 <option value="">All Events</option>
                                 {events.map((event) => (
                                     <option key={String(event._id)} value={String(event._id)}>
-                                        {event.name}
+                                        {event.title}
                                     </option>
                                 ))}
                             </Select>
@@ -254,12 +254,6 @@ export default function AdminRegistrations() {
                                                     <div className="text-sm font-medium text-gray-900">
                                                         {registration.name}
                                                     </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        {registration.email}
-                                                    </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        {registration.studentId}
-                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
@@ -267,20 +261,17 @@ export default function AdminRegistrations() {
                                                     <div className="text-sm font-medium text-gray-900">
                                                         {registration.eventName}
                                                     </div>
-                                                    <div className="text-sm text-gray-500">
-                                                        {registration.eventType}
-                                                    </div>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {new Date(registration.registrationDate).toLocaleDateString()}
+                                                {new Date(registration?.createdAt || '').toLocaleDateString()}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 {getStatusBadge(registration.status)}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex flex-col gap-1">
-                                                    {getPaymentStatusBadge(registration.paymentStatus)}
+                                                    {registration.paymentStatus && getPaymentStatusBadge(registration.paymentStatus)}
                                                     <span className="text-sm text-gray-500">
                                                         PKR {registration.amountPaid}
                                                     </span>

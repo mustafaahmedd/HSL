@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     const registrations = await Registration.find(query)
       .populate('eventId', 'name eventType startDate endDate')
       .populate('playerId', 'name email phone')
-      .sort({ registrationDate: -1 })
+      .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
       .limit(limit);
 
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
     // Create registration
     const registration = new Registration({
       eventId,
-      eventName: event.name,
+      eventName: event.title,
       eventType: event.eventType,
       registrationType: event.registrationType,
       name,

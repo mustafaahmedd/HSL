@@ -1,44 +1,9 @@
 import mongoose, { Schema, model, models } from 'mongoose';
-
-export interface IEvent {
-  _id?: mongoose.Types.ObjectId;
-  name: string;
-  description: string;
-  eventType: 'tournament' | 'activity' | 'event' | 'competition';
-  status: 'upcoming' | 'live' | 'completed' | 'cancelled';
-  startDate: Date;
-  endDate?: Date;
-  venue: string;
-  registrationType: 'individual' | 'team' | 'both';
-  pricePerPerson: number;
-  pricePerTeam: number;
-  amenities: string[];
-  facilities: string[];
-  maxParticipants?: number;
-  minParticipants: number;
-  images: {
-    url: string;
-    caption?: string;
-    isPrimary: boolean;
-  }[];
-  totalParticipants: number;
-  totalRevenue: number;
-  registrationDeadline?: Date;
-  isPublished: boolean;
-  tags: string[];
-  organizer: string;
-  contactInfo: {
-    email?: string;
-    phone?: string;
-    whatsapp?: string;
-  };
-  createdAt?: Date;
-  updatedAt?: Date;
-}
+import { IEvent } from '@/types/Event';
 
 const EventSchema = new Schema<IEvent>(
   {
-    name: {
+    title: {
       type: String,
       required: true,
       trim: true,
@@ -53,6 +18,11 @@ const EventSchema = new Schema<IEvent>(
       enum: ['tournament', 'activity', 'event', 'competition'],
       required: true,
     },
+    sport: {
+      type: String,
+      enum: ['cricket', 'football', 'futsal', 'cycling', 'padel', 'badminton', 'tennis', 'basketball', 'volleyball', 'swimming', 'athletics', 'academic'],
+      default: 'cricket',
+    },
     status: {
       type: String,
       enum: ['upcoming', 'live', 'completed', 'cancelled'],
@@ -62,8 +32,13 @@ const EventSchema = new Schema<IEvent>(
       type: Date,
       required: true,
     },
-    endDate: {
-      type: Date,
+    startTime: {
+      type: String,
+      required: true,
+    },
+    endTime: {
+      type: String,
+      required: true,
     },
     venue: {
       type: String,
@@ -136,15 +111,7 @@ const EventSchema = new Schema<IEvent>(
       trim: true,
     },
     contactInfo: {
-      email: {
-        type: String,
-        trim: true,
-      },
       phone: {
-        type: String,
-        trim: true,
-      },
-      whatsapp: {
         type: String,
         trim: true,
       },
