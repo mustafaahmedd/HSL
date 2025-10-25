@@ -18,6 +18,7 @@ export interface IRegistration {
 
   
   // Sport-specific details
+  playedPreviousLeague?: boolean;
   specialRequirements?: string;
   teamName?: string;
   playBothTournaments?: boolean;

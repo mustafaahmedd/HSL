@@ -63,6 +63,7 @@ export async function POST(request: NextRequest) {
       description: formData.get('description') as string,
       eventType: formData.get('eventType') as string,
       sport: formData.get('sport') as string,
+      formTemplate: (formData.get('formTemplate') as string) || 'generic',
       startDate: formData.get('startDate') as string,
       startTime: formData.get('startTime') as string,
       endTime: formData.get('endTime') as string,
@@ -72,7 +73,7 @@ export async function POST(request: NextRequest) {
       pricePerTeam: Number(formData.get('pricePerTeam')),
       amenities: JSON.parse(formData.get('amenities') as string || '[]'),
       facilities: JSON.parse(formData.get('facilities') as string || '[]'),
-      maxParticipants: formData.get('maxParticipants') ? Number(formData.get('maxParticipants')) : undefined,
+      maxParticipants: formData.get('maxParticipants') ? Number(formData.get('maxParticipants')) : null,
       minParticipants: Number(formData.get('minParticipants')),
       organizer: formData.get('organizer') as string,
       contactInfo: {

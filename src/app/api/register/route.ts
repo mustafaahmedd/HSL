@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
       timings: formData.get('timings') as string,
       
       // Sport specific details (for Registration collection)
+      playedPreviousLeague: formData.get('playedPreviousLeague') === 'true' || formData.get('playedPreviousLeague') === 'yes',
       playBothTournaments: formData.get('playBothTournaments') === 'true' || formData.get('playBothTournaments') === 'yes',
       skillLevel: formData.get('skillLevel') as string,
       iconPlayerRequest: formData.get('iconPlayerRequest') === 'true' || formData.get('iconPlayerRequest') === 'yes',
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate required fields (make validation more flexible based on sport type)
-    const requiredFields = ['eventId', 'name', 'contactNo', 'timings', 'skillLevel', 'paymentMethod'];
+    const requiredFields = ['eventId', 'name', 'contactNo', 'skillLevel', 'paymentMethod'];
     
     // Add sport-specific required fields
     if (event.sport === 'cricket') {
@@ -144,6 +145,7 @@ export async function POST(request: NextRequest) {
       timings: formFields.timings,
       
       // Sport-specific details
+      playedPreviousLeague: formFields.playedPreviousLeague,
       playBothTournaments: formFields.playBothTournaments,
       skillLevel: formFields.skillLevel,
       iconPlayerRequest: formFields.iconPlayerRequest,
@@ -165,6 +167,13 @@ export async function POST(request: NextRequest) {
     registrationData.photoUrl = photoUrl;
 
     const registration = await Registration.create(registrationData);
+
+    // Step 3: Increment event participant count
+    await Event.findByIdAndUpdate(
+      formFields.eventId,
+      { $inc: { totalParticipants: 1 } },
+      { new: true }
+    );
 
     return NextResponse.json({
       success: true,

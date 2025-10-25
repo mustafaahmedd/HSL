@@ -18,7 +18,7 @@ export const Card: React.FC<CardProps> = ({
           <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
         </div>
       )}
-      <div className="p-6">{children}</div>
+      <div className="p-4">{children}</div>
     </div>
   );
 };

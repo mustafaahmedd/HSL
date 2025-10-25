@@ -6,6 +6,40 @@ import Link from 'next/link';
 import { Card, Button } from '@/components/ui';
 import { IEvent } from '@/types/Event';
 
+// Copy Button Component with Icon and Success Feedback
+const CopyButton: React.FC<{ text: string }> = ({ text }) => {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+        }
+    };
+
+    return (
+        <button
+            type="button"
+            onClick={handleCopy}
+            className="p-1.5 rounded-md text-gray-100 transition-colors duration-200 flex items-center justify-center min-w-[32px] h-8"
+            title={copied ? "Copied!" : "Copy to clipboard"}
+        >
+            {copied ? (
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+            ) : (
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+            )}
+        </button>
+    );
+};
+
 export default function RegistrationSuccess() {
     const params = useParams();
     const router = useRouter();
@@ -42,21 +76,22 @@ export default function RegistrationSuccess() {
     const generateWhatsAppMessage = () => {
         if (!event || !registrationData) return '';
 
-        const message = `Assalam-o-Alaikum!
+        const message = `Assalam-o-Alaikum HSL Admin!
 
 I have registered for "${event.title}".
 
 My Details:
 • Name: ${registrationData.name}
-• Department: ${registrationData.department}
-• Phone: ${registrationData.phone}
+• Is Hikmah Student: ${registrationData.isHikmahStudent ? 'Yes' : 'No'}
+• Course Enrolled: ${registrationData.courseEnrolled || '-'}
+• Timings: ${registrationData.timings || '-'}
 
 Event Details:
 • Event: ${event.title}
 • Date: ${new Date(event.startDate).toLocaleDateString()}
 • Amount: PKR ${event.registrationType === 'team' ? event.pricePerTeam : event.pricePerPerson}
 
-Please confirm the payment details and provide the payment method.
+I have made the payment as per the bank details provided. Please find the payment receipt attached.
 
 Jazak'Allah!`;
 
@@ -65,8 +100,41 @@ Jazak'Allah!`;
 
     const getWhatsAppLink = () => {
         const message = generateWhatsAppMessage();
-        const phoneNumber = event?.contactInfo?.phone?.replace(/[^0-9]/g, '') || '923142566165';
+        const phoneNumber = '923142566165';
+        // const phoneNumber = event?.contactInfo?.phone?.replace(/[^0-9]/g, '') || '923142566165';
         return `https://wa.me/${phoneNumber}?text=${message}`;
+    };
+
+    const handleWhatsAppClick = (e: React.MouseEvent) => {
+        e.preventDefault();
+        const message = generateWhatsAppMessage();
+        const phoneNumber = '923142566165';
+
+        // Try different WhatsApp URL formats
+        const urls = [
+            `https://wa.me/${phoneNumber}?text=${message}`,
+            `https://api.whatsapp.com/send?phone=${phoneNumber}&text=${message}`,
+            `whatsapp://send?phone=${phoneNumber}&text=${message}`
+        ];
+
+        // Try the first URL, if it fails, try the next one
+        const tryOpenWhatsApp = (index: number) => {
+            if (index >= urls.length) {
+                // If all fail, open the first URL in a new tab
+                window.open(urls[0], '_blank');
+                return;
+            }
+
+            const link = document.createElement('a');
+            link.href = urls[index];
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+
+        tryOpenWhatsApp(0);
     };
 
     if (loading) {
@@ -106,37 +174,49 @@ Jazak'Allah!`;
 
                 {/* Event Details Card */}
                 <Card className="mb-8 bg-white/10 backdrop-blur-sm border-white/20">
-                    <div className="p-6">
+                    <div>
                         <h2 className="text-2xl font-bold text-white mb-4">Event Details</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-white">
                             <div>
-                                <strong>Event Name:</strong> {event.title}
+                                <strong>Event Name:</strong> <i>{event.title}</i>
                             </div>
                             <div>
                                 <strong>Type:</strong> {event.eventType}
                             </div>
                             <div>
-                                <strong>Date:</strong> {new Date(event.startDate).toLocaleDateString()}
+                                <strong>Date:</strong> {
+                                    (() => {
+                                        const date = new Date(event.startDate);
+                                        const monthNames = [
+                                            "January", "February", "March", "April", "May", "June",
+                                            "July", "August", "September", "October", "November", "December"
+                                        ];
+                                        const day = date.getDate();
+                                        const month = monthNames[date.getMonth()];
+                                        const year = date.getFullYear();
+                                        return `${day} ${month} ${year}`;
+                                    })()
+                                }
                             </div>
                             <div>
                                 <strong>Venue:</strong> {event.venue}
                             </div>
-                            <div>
+                            {/* <div>
                                 <strong>Registration Type:</strong> {event.registrationType}
-                            </div>
-                            <div>
+                            </div> */}
+                            {/* <div>
                                 <strong>Status:</strong>
                                 <span className="ml-2 px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">
                                     Pending Approval
                                 </span>
-                            </div>
+                            </div> */}
                         </div>
                     </div>
                 </Card>
 
                 {/* Payment Information */}
                 <Card className="mb-8 bg-white/10 backdrop-blur-sm border-white/20">
-                    <div className="p-6">
+                    <div>
                         <h2 className="text-2xl font-bold text-white mb-4">Payment Information</h2>
                         <div className="bg-white/5 rounded-lg p-4 mb-6">
                             <div className="text-center">
@@ -150,15 +230,48 @@ Jazak'Allah!`;
                             </div>
                         </div>
 
+                        <div className="bg-white/5 rounded-lg p-4 mb-6">
+                            <h4 className="text-lg font-semibold text-white mb-4">Bank Transfer Details</h4>
+                            <div className="space-y-3 text-gray-200">
+                                {/* Bank Name */}
+                                <div className="flex items-center gap-3">
+                                    <span className="font-semibold text-sm sm:text-base min-w-[120px] sm:min-w-[150px] flex-shrink-0">Bank Name:</span>
+                                    <span className="select-all text-sm sm:text-base">Sada Pay</span>
+                                </div>
+
+                                {/* Account Holder Name */}
+                                <div className="flex items-center gap-3">
+                                    <span className="font-semibold text-sm sm:text-base min-w-[120px] sm:min-w-[150px] flex-shrink-0">Account Title:</span>
+                                    <span className="select-all text-sm sm:text-base">Mustafa Ahmed</span>
+                                </div>
+
+                                {/* Account Number with Copy Button */}
+                                <div className="flex items-center gap-3">
+                                    <span className="font-semibold text-sm sm:text-base min-w-[120px] sm:min-w-[150px] flex-shrink-0">Account Number:</span>
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <span className="select-all text-sm sm:text-base font-mono" id="acc-num">03142566165</span>
+                                        <CopyButton text="03142566165" />
+                                    </div>
+                                </div>
+
+                                {/* IBAN with Copy Button */}
+                                <div className="flex items-start gap-3">
+                                    <span className="font-semibold text-sm sm:text-base min-w-[120px] sm:min-w-[150px] flex-shrink-0 mt-1">IBAN:</span>
+                                    <div className="flex items-start gap-2 flex-1 min-w-0">
+                                        <span className="select-all text-sm sm:text-base font-mono break-all" id="iban-num">PK48SADA0000003142566165</span>
+                                        <CopyButton text="PK48SADA0000003142566165" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div className="space-y-4">
                             <div className="bg-white/5 rounded-lg p-4">
                                 <h4 className="text-lg font-semibold text-white mb-2">Payment Instructions</h4>
                                 <ol className="list-decimal list-inside space-y-2 text-gray-200">
-                                    <li>Contact the event organizer using the WhatsApp link below</li>
-                                    <li>Provide your registration details</li>
-                                    <li>Confirm the payment amount</li>
-                                    <li>Follow the payment method provided by the organizer</li>
-                                    <li>Send payment proof via WhatsApp</li>
+                                    <li>Make payment to the account details provided above</li>
+                                    <li>Contact <strong>HSL Admin</strong> via WhatsApp link below</li>
+                                    <li>Send the payment receipt to the admin via WhatsApp</li>
                                 </ol>
                             </div>
 
@@ -172,7 +285,7 @@ Jazak'Allah!`;
                                     <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
                                         <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488" />
                                     </svg>
-                                    Contact Organizer on WhatsApp
+                                    Contact HSL Admin
                                 </a>
                             </div>
                         </div>
@@ -224,7 +337,7 @@ Jazak'Allah!`;
                 )}
 
                 {/* Next Steps */}
-                <Card className="mb-8 bg-white/10 backdrop-blur-sm border-white/20">
+                {/* <Card className="mb-8 bg-white/10 backdrop-blur-sm border-white/20">
                     <div className="p-6">
                         <h2 className="text-2xl font-bold text-white mb-4">What's Next?</h2>
                         <div className="space-y-3 text-gray-200">
@@ -262,7 +375,7 @@ Jazak'Allah!`;
                             </div>
                         </div>
                     </div>
-                </Card>
+                </Card> */}
 
                 {/* Action Buttons */}
                 <div className="text-center space-y-4">

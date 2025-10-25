@@ -95,8 +95,8 @@ export default function AdminDashboard() {
       const configData = await configResponse.json();
 
       if (configData.success) {
-        setTournaments(configData.tournaments);
-        setTeams(configData.teams);
+        setTournaments(configData.tournaments || []);
+        setTeams(configData.teams || []);
       }
 
       // Fetch players
@@ -104,7 +104,7 @@ export default function AdminDashboard() {
       const playersData = await playersResponse.json();
 
       if (playersData.success) {
-        setPlayers(playersData.players);
+        setPlayers(playersData.players || []);
       }
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -350,7 +350,7 @@ export default function AdminDashboard() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <Input
-                  label="Start Date"
+                  label="Date"
                   type="date"
                   value={tournamentForm.startDate}
                   onChange={(e) => setTournamentForm({ ...tournamentForm, startDate: e.target.value })}
@@ -444,22 +444,26 @@ export default function AdminDashboard() {
           )}
 
           <div className="space-y-2">
-            {tournaments.map((tournament) => (
-              <div key={tournament._id?.toString()} className="flex justify-between items-center p-3 bg-gray-50 rounded">
-                <div>
-                  <h4 className="font-semibold">{tournament.name}</h4>
-                  <p className="text-sm text-gray-600">Status: {tournament.status}</p>
+            {tournaments && tournaments.length > 0 ? (
+              tournaments.map((tournament) => (
+                <div key={tournament._id?.toString()} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                  <div>
+                    <h4 className="font-semibold">{tournament.name}</h4>
+                    <p className="text-sm text-gray-600">Status: {tournament.status}</p>
+                  </div>
+                  <Select
+                    value={tournament._id?.toString()}
+                    onChange={(e) => setSelectedTournament(e.target.value)}
+                    options={[
+                      { value: '', label: 'Select Tournament' },
+                      ...(tournaments || []).map(t => ({ value: t._id?.toString() || '', label: t.name }))
+                    ]}
+                  />
                 </div>
-                <Select
-                  value={tournament._id?.toString()}
-                  onChange={(e) => setSelectedTournament(e.target.value)}
-                  options={[
-                    { value: '', label: 'Select Tournament' },
-                    ...tournaments.map(t => ({ value: t._id?.toString() || '', label: t.name }))
-                  ]}
-                />
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-gray-500 text-sm">No tournaments created yet.</p>
+            )}
           </div>
         </Card>
 
@@ -502,14 +506,18 @@ export default function AdminDashboard() {
           )}
 
           <div className="space-y-2">
-            {teams.map((team) => (
-              <div key={team._id?.toString()} className="p-3 bg-gray-50 rounded">
-                <h4 className="font-semibold">{team.name}</h4>
-                <p className="text-sm text-gray-600">
-                  Owner: {team.owner} | Budget: {team.totalBudget} | Spent: {team.pointsSpent}
-                </p>
-              </div>
-            ))}
+            {teams && teams.length > 0 ? (
+              teams.map((team) => (
+                <div key={team._id?.toString()} className="p-3 bg-gray-50 rounded">
+                  <h4 className="font-semibold">{team.name}</h4>
+                  <p className="text-sm text-gray-600">
+                    Owner: {team.owner} | Budget: {team.totalBudget} | Spent: {team.pointsSpent}
+                  </p>
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-sm">No teams created yet.</p>
+            )}
           </div>
         </Card>
 
@@ -537,7 +545,8 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {players.map((player) => (
+                {players && players.length > 0 ? (
+                  players.map((player) => (
                   <tr key={player._id?.toString()}>
                     <td className="px-6 py-4 whitespace-nowrap">{player.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -583,7 +592,14 @@ export default function AdminDashboard() {
                       />
                     </td>
                   </tr>
-                ))}
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                      No players registered yet.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>

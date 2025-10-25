@@ -2,7 +2,11 @@
 
 import React, { useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import RegistrationForm, { fieldConfigs } from '@/components/forms/RegistrationForm';
+import CricketRegistrationForm from '@/components/forms/CricketRegistrationForm';
+import FutsalRegistrationForm from '@/components/forms/FutsalRegistrationForm';
+import PadelRegistrationForm from '@/components/forms/PadelRegistrationForm';
+import CyclingRegistrationForm from '@/components/forms/CyclingRegistrationForm';
+import GenericRegistrationForm from '@/components/forms/GenericRegistrationForm';
 import { IEvent } from '@/types/Event';
 
 function EventRegistrationForm() {
@@ -12,7 +16,6 @@ function EventRegistrationForm() {
 
     const [event, setEvent] = useState<IEvent | null>(null);
     const [loading, setLoading] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
 
     useEffect(() => {
         if (eventId) {
@@ -33,43 +36,6 @@ function EventRegistrationForm() {
             console.error('Error fetching event:', error);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleRegistration = async (formData: any) => {
-        setSubmitting(true);
-        try {
-            const submitData = new FormData();
-
-            // Add all form fields
-            Object.entries(formData).forEach(([key, value]) => {
-                if (key !== 'photo' && value !== null && value !== undefined) {
-                    submitData.append(key, value.toString());
-                }
-            });
-
-            // Add photo
-            if (formData.photo) {
-                submitData.append('photo', formData.photo);
-            }
-
-            const response = await fetch('/api/register', {
-                method: 'POST',
-                body: submitData,
-            });
-
-            const data = await response.json();
-
-            if (data.success) {
-                router.push('/register/success');
-            } else {
-                alert(data.error || 'Registration failed');
-            }
-        } catch (error) {
-            console.error('Registration error:', error);
-            alert('Failed to submit registration');
-        } finally {
-            setSubmitting(false);
         }
     };
 
@@ -98,36 +64,34 @@ function EventRegistrationForm() {
         );
     }
 
-    // Determine event type for dynamic fields
-    const getEventType = (event: IEvent): string => {
-        return event.sport || 'generic';
-    };
-
-    const eventType = getEventType(event);
-
-    const config = {
-        title: `Register for ${event.title}`,
-        description: `Join ${event.title} - ${event.description}`,
-        fields: fieldConfigs.eventRegistration(eventType, {
-            events: [{
-                value: event._id?.toString() || '',
-                label: `${event.title} - ${new Date(event.startDate).toLocaleDateString()} (${event.startTime} - ${event.endTime})`
-            }],
+    // Render the appropriate form based on formTemplate
+    const renderForm = () => {
+        const formTemplate = event.formTemplate || 'generic';
+        const formProps = {
+            eventId: eventId,
+            eventTitle: event.title,
             pricePerPerson: event.pricePerPerson,
-            preselectedEventId: event._id?.toString() // Pre-select this event
-        }),
-        submitText: 'Complete Registration',
-        cancelText: 'Cancel',
-        onSubmit: handleRegistration,
-        onCancel: () => router.push(`/events/${eventId}`),
-        loading: submitting,
-        onEventChange: () => { } // No need to change event since it's pre-selected
+        };
+
+        switch (formTemplate) {
+            case 'cricket':
+                return <CricketRegistrationForm {...formProps} />;
+            case 'futsal':
+                return <FutsalRegistrationForm {...formProps} />;
+            case 'padel':
+                return <PadelRegistrationForm {...formProps} />;
+            case 'cycling':
+                return <CyclingRegistrationForm {...formProps} />;
+            case 'generic':
+            default:
+                return <GenericRegistrationForm {...formProps} />;
+        }
     };
 
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
-                <RegistrationForm config={config} />
+                {renderForm()}
             </div>
         </div>
     );

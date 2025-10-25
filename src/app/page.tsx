@@ -228,8 +228,16 @@ export default function HSLHome() {
                         </Button>
                       </Link>
                       {event.status === 'upcoming' && (
-                        <Link href={`/register?event=${event._id}`}>
-                          <Button variant="secondary" className="w-full bg-white/10 backdrop-blur-sm text-white border-2 border-white/20 hover:bg-white/20">
+                        // <Link href={`/register?event=${event._id}`}>
+                        //   <Button variant="secondary" className="w-full bg-white/10 backdrop-blur-sm text-white border-2 border-white/20 hover:bg-white/20">
+                        //     Register Now
+                        //   </Button>
+                        // </Link>
+                        <Link href={`/events/${event._id}/register`}>
+                          <Button
+                            variant="secondary"
+                            className="w-full bg-white/10 backdrop-blur-sm text-white border-2 border-white/20"
+                          >
                             Register Now
                           </Button>
                         </Link>

@@ -11,13 +11,13 @@ const RegistrationSchema = new Schema<IRegistration>(
     },
     eventName: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     playerId: {
       type: Schema.Types.ObjectId,
       ref: 'Player',
-      required: true,
+      required: false,
     },
     
     // Personal Information (stored in both Player and Registration for easy access)
@@ -49,7 +49,7 @@ const RegistrationSchema = new Schema<IRegistration>(
     },
     timings: {
       type: String,
-      required: true,
+      required: false,
       trim: true,
     },
     photoUrl: {
@@ -58,6 +58,10 @@ const RegistrationSchema = new Schema<IRegistration>(
     },
     
     // Sport-specific details
+    playedPreviousLeague: {
+      type: Boolean,
+      default: false,
+    },
     specialRequirements: {
       type: String,
       trim: true,

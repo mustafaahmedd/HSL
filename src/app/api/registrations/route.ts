@@ -245,7 +245,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const registration = await Registration.findByIdAndDelete(registrationId);
+    // First, get the registration to find its eventId before deleting
+    const registration = await Registration.findById(registrationId);
     if (!registration) {
       return NextResponse.json(
         { error: 'Registration not found' },
@@ -253,10 +254,18 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Update event participant count
-    await Event.findByIdAndUpdate(registration.eventId, {
+    // Store eventId before deletion
+    const eventId = registration.eventId;
+
+    // Delete the registration
+    await Registration.findByIdAndDelete(registrationId);
+
+    // Decrement event participant count
+    await Event.findByIdAndUpdate(eventId, {
       $inc: { totalParticipants: -1 },
     });
+
+    console.log(`Registration ${registrationId} deleted. Event ${eventId} participant count decremented.`);
 
     return NextResponse.json({
       success: true,

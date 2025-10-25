@@ -23,6 +23,11 @@ const EventSchema = new Schema<IEvent>(
       enum: ['cricket', 'football', 'futsal', 'cycling', 'padel', 'badminton', 'tennis', 'basketball', 'volleyball', 'swimming', 'athletics', 'academic'],
       default: 'cricket',
     },
+    formTemplate: {
+      type: String,
+      enum: ['cricket', 'futsal', 'padel', 'cycling', 'generic'],
+      default: 'generic',
+    },
     status: {
       type: String,
       enum: ['upcoming', 'live', 'completed', 'cancelled'],

@@ -6,6 +6,7 @@ export interface IEvent {
   description: string;
   eventType: 'tournament' | 'activity' | 'event' | 'competition';
   sport: 'cricket' | 'football' | 'futsal' | 'cycling' | 'padel' | 'badminton' | 'tennis' | 'basketball' | 'volleyball' | 'swimming' | 'athletics' | 'academic';
+  formTemplate: 'cricket' | 'futsal' | 'padel' | 'cycling' | 'generic';
   status: 'upcoming' | 'live' | 'completed' | 'cancelled';
   startDate: Date;
   startTime: string;
