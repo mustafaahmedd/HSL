@@ -219,7 +219,7 @@ export default function PadelRegistrationForm({ eventId, eventTitle, pricePerPer
                                             name="timings"
                                             value={formData.timings}
                                             onChange={handleInputChange}
-                                            required
+                                            // required
                                             options={[{ value: '', label: 'Select...' }, ...timingOptions]}
                                         />
                                     )}
@@ -232,7 +232,7 @@ export default function PadelRegistrationForm({ eventId, eventTitle, pricePerPer
                                     name="timings"
                                     value={formData.timings}
                                     onChange={handleInputChange}
-                                    required
+                                    // required
                                     placeholder="Enter your availability"
                                 />
                             )}

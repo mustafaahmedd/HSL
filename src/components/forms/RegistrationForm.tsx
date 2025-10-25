@@ -577,7 +577,7 @@ export const getEventFields = (eventType: string, eventData?: any): Registration
             name: 'timings',
             label: 'What are your timings?',
             type: 'select' as const,
-            required: true,
+            // required: true,
             options: timingOptions,
             conditional: {
                 field: 'courseEnrolled',

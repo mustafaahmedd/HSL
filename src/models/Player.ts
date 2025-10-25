@@ -32,7 +32,7 @@ const PlayerSchema = new Schema<IPlayer>(
     },
     timings: {
       type: String,
-      required: true,
+      // required: true,
     },
     playBothTournaments: {
       type: Boolean,
