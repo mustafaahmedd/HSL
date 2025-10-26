@@ -180,3 +180,8 @@ body {
     transform: translateY(0);
   }
 }
+
+.registration-dark-mode input,
+select {
+  color: #0a0a0a;
+}

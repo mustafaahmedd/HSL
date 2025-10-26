@@ -21,6 +21,7 @@ const darseNizamiYears = [
     { value: 'Saniya', label: 'Saniya' },
     { value: 'Salisa', label: 'Salisa' },
     { value: 'Rabiya', label: 'Rabiya' },
+    { value: 'Khamisa', label: 'Khamisa' },
     { value: 'Saadisa', label: 'Saadisa' },
     { value: 'Sabiya', label: 'Sabiya' },
     { value: 'Th\'amina', label: 'Th\'amina' },
@@ -191,7 +192,7 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
 
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* Personal Information */}
-                    <div className="border-b pb-4">
+                    <div className="border-b pb-4 registration-dark-mode">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
 
                         <div className="space-y-4">
@@ -202,6 +203,7 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
                                 onChange={handleInputChange}
                                 required
                                 placeholder="Enter your full name"
+                                className='text-black'
                             />
 
                             <Input

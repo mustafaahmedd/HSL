@@ -35,6 +35,7 @@ export interface IRegistration {
   paymentMethod?: string;
   paymentStatus?: string;
   amountPaid?: number;
+  isPaid?: boolean;
   assurance?: boolean;
   
   // Status

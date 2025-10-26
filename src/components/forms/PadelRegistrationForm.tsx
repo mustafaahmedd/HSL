@@ -20,6 +20,7 @@ const darseNizamiYears = [
     { value: 'Saniya', label: 'Saniya' },
     { value: 'Salisa', label: 'Salisa' },
     { value: 'Rabiya', label: 'Rabiya' },
+    { value: 'Khamisa', label: 'Khamisa' },
     { value: 'Saadisa', label: 'Saadisa' },
     { value: 'Sabiya', label: 'Sabiya' },
     { value: 'Th\'amina', label: 'Th\'amina' },

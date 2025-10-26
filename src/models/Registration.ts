@@ -123,6 +123,10 @@ const RegistrationSchema = new Schema<IRegistration>(
       type: Number,
       default: 0,
     },
+    isPaid: {
+      type: Boolean,
+      default: false,
+    },
     assurance: {
       type: Boolean,
       default: false,

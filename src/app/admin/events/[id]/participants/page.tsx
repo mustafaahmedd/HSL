@@ -6,6 +6,40 @@ import { Card, Button, Input, Select } from '@/components/ui';
 import { IRegistration } from '@/types/Registration';
 import { IEvent } from '@/types/Event';
 
+// Copy Button Component
+const CopyButton: React.FC<{ text: string }> = ({ text }) => {
+    const [copied, setCopied] = useState(false);
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(text);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+        }
+    };
+
+    return (
+        <button
+            type="button"
+            onClick={handleCopy}
+            className="ml-2 p-1 hover:bg-gray-100 rounded transition-colors"
+            title={copied ? "Copied!" : "Copy to clipboard"}
+        >
+            {copied ? (
+                <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+            ) : (
+                <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+            )}
+        </button>
+    );
+};
+
 export default function EventParticipants() {
     const params = useParams();
     const eventId = params.id as string;
@@ -16,6 +50,12 @@ export default function EventParticipants() {
     const [registrations, setRegistrations] = useState<IRegistration[]>([]);
     const [editingRegistration, setEditingRegistration] = useState<string | null>(null);
     const [editForm, setEditForm] = useState<any>({});
+
+    // Payment modal states
+    const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+    const [selectedRegistration, setSelectedRegistration] = useState<IRegistration | null>(null);
+    const [paymentAmount, setPaymentAmount] = useState('');
+    const [isPaid, setIsPaid] = useState(false);
 
     useEffect(() => {
         checkAuth();
@@ -66,7 +106,7 @@ export default function EventParticipants() {
         }
     };
 
-    const updateRegistration = async (registrationId: string) => {
+    const updateRegistration = async (registrationId: string, updateData?: any) => {
         try {
             const token = localStorage.getItem('adminToken');
             const response = await fetch('/api/registrations', {
@@ -77,7 +117,7 @@ export default function EventParticipants() {
                 },
                 body: JSON.stringify({
                     registrationId,
-                    ...editForm,
+                    ...updateData,
                 }),
             });
 
@@ -98,14 +138,47 @@ export default function EventParticipants() {
     const startEditing = (registration: IRegistration) => {
         setEditingRegistration(registration._id!.toString());
         setEditForm({
-            title: registration.eventName,
-            phone: registration.contactNo,
-            teamName: registration.teamName,
-            specialRequirements: registration.specialRequirements,
-            status: registration.status,
-            paymentStatus: registration.paymentStatus,
-            amountPaid: registration.amountPaid,
+            name: registration.name || '',
+            contactNo: registration.contactNo || '',
+            courseEnrolled: registration.courseEnrolled || '',
+            darseNizamiYear: registration.darseNizamiYear || '',
+            currentCourseYear: registration.currentCourseYear || '',
+            teamName: registration.teamName || '',
+            specialRequirements: registration.specialRequirements || '',
+            status: registration.status || 'pending',
+            paymentStatus: registration.paymentStatus || 'pending',
+            amountPaid: registration.amountPaid || 0,
+            adminNotes: (registration as any).adminNotes || '',
+            photoUrl: registration.photoUrl || '',
+            isHikmahStudent: registration.isHikmahStudent || false,
+            timings: registration.timings || '',
+            playerRole: (registration as any).playerRole || '',
+            playingStyle: (registration as any).playingStyle || '',
+            position: (registration as any).position || '',
         });
+    };
+
+    const handleMarkPayment = (registration: IRegistration) => {
+        setSelectedRegistration(registration);
+        setIsPaid((registration as any).isPaid || false);
+        setPaymentAmount((registration.amountPaid || 0).toString());
+        setPaymentModalOpen(true);
+    };
+
+    const handleSubmitPayment = async () => {
+        if (!selectedRegistration) return;
+
+        const updateData = {
+            isPaid: isPaid,
+            amountPaid: parseFloat(paymentAmount) || 0,
+            paymentStatus: isPaid ? 'paid' : 'pending',
+        };
+
+        await updateRegistration(selectedRegistration._id!.toString(), updateData);
+        setPaymentModalOpen(false);
+        setSelectedRegistration(null);
+        setPaymentAmount('');
+        setIsPaid(false);
     };
 
     const getStatusBadge = (status: string) => {
@@ -122,7 +195,14 @@ export default function EventParticipants() {
         );
     };
 
-    const getPaymentStatusBadge = (status: string) => {
+    const getPaymentStatusBadge = (status: string, isPaid: boolean) => {
+        if (isPaid) {
+            return (
+                <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    Paid
+                </span>
+            );
+        }
         const statusColors = {
             pending: 'bg-yellow-100 text-yellow-800',
             paid: 'bg-green-100 text-green-800',
@@ -155,144 +235,253 @@ export default function EventParticipants() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 py-8">
+        <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                {/* Event Header */}
+                {/* Event Header with Enhanced Design */}
                 {event && (
-                    <div className="mb-8">
-                        <h1 className="text-3xl font-bold text-gray-900 mb-2">{event.title}</h1>
-                        <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-                            <span><strong>Type:</strong> {event.eventType}</span>
-                            <span><strong>Date:</strong> {new Date(event.startDate).toLocaleDateString()}</span>
-                            <span><strong>Venue:</strong> {event.venue}</span>
-                            <span><strong>Participants:</strong> {registrations.length}</span>
+                    <div className="mb-8 bg-white rounded-xl shadow-lg p-6 border border-gray-200">
+                        <h1 className="text-3xl font-bold text-gray-900 mb-3">{event.title}</h1>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                            <div className="bg-blue-50 rounded-lg p-3">
+                                <p className="text-gray-600 text-xs uppercase font-semibold mb-1">Type</p>
+                                <p className="text-gray-900 font-medium">{event.eventType}</p>
+                            </div>
+                            <div className="bg-purple-50 rounded-lg p-3">
+                                <p className="text-gray-600 text-xs uppercase font-semibold mb-1">Date</p>
+                                <p className="text-gray-900 font-medium">{new Date(event.startDate).toLocaleDateString()}</p>
+                            </div>
+                            <div className="bg-green-50 rounded-lg p-3">
+                                <p className="text-gray-600 text-xs uppercase font-semibold mb-1">Venue</p>
+                                <p className="text-gray-900 font-medium">{event.venue}</p>
+                            </div>
+                            <div className="bg-orange-50 rounded-lg p-3">
+                                <p className="text-gray-600 text-xs uppercase font-semibold mb-1">Participants</p>
+                                <p className="text-gray-900 font-medium text-2xl">{registrations.length}</p>
+                            </div>
                         </div>
                     </div>
                 )}
 
-                {/* Participants Table */}
-                <Card title={`Participants (${registrations.length})`}>
+                {/* Participants Grid */}
+                <div className="space-y-4">
                     {registrations.length === 0 ? (
-                        <div className="text-center py-8">
-                            <p className="text-gray-500">No participants registered yet.</p>
-                        </div>
+                        <Card className="bg-white rounded-xl shadow-lg">
+                            <div className="text-center py-12">
+                                <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                                <p className="mt-4 text-gray-500 text-lg">No participants registered yet.</p>
+                            </div>
+                        </Card>
                     ) : (
-                        <div className="overflow-x-auto">
-                            <table className="min-w-full divide-y divide-gray-200">
-                                <thead className="bg-gray-50">
-                                    <tr>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Participant
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Contact Info
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Team Details
-                                        </th>
-                                        {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Registration
-                                        </th> */}
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Status
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Payment
-                                        </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                            Actions
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody className="bg-white divide-y divide-gray-200">
-                                    {registrations.map((registration) => (
-                                        <tr key={String(registration._id)} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div>
-                                                    <span className="text-sm text-gray-500">{getStatusBadge(registration.status)}</span>
-                                                    <div className="py-1 text-lg font-medium text-gray-900 font-bold uppercase">
-                                                        {registration.name}
+                        registrations.map((registration) => (
+                            <Card key={String(registration._id)} className="bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow">
+                                <div className="p-6">
+                                    <div className="flex items-start gap-6">
+                                        {/* Profile Picture */}
+                                        <div className="flex-shrink-0">
+                                            <img
+                                                src={registration.photoUrl || '/placeholder.jpg'}
+                                                alt={registration.name}
+                                                className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"
+                                                onError={(e) => {
+                                                    (e.target as HTMLImageElement).src = '/placeholder.jpg';
+                                                }}
+                                            />
+                                        </div>
+
+                                        {/* Main Content */}
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-start justify-between mb-4">
+                                                <div className="flex-1">
+                                                    <div className="flex items-center gap-3 mb-2">
+                                                        <h3 className="text-xl font-bold text-gray-900 uppercase tracking-wide">
+                                                            {registration.name}
+                                                        </h3>
+                                                        {getStatusBadge(registration.status)}
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div>
-                                                    <div className="text-sm text-gray-900">
-                                                        {registration.contactNo}
+
+                                                    {/* Contact Info with Copy Button */}
+                                                    <div className="flex items-center text-gray-600 mb-2">
+                                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                                        </svg>
+                                                        <span className="font-medium">{registration.contactNo}</span>
+                                                        <CopyButton text={registration.contactNo} />
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                {registration.teamName ? (
-                                                    <div>
-                                                        <div className="text-sm font-medium text-gray-900">
-                                                            {registration.teamName}
+
+                                                    {/* Course & Year Details */}
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3">
+                                                        {registration.courseEnrolled && (
+                                                            <div className="bg-blue-50 rounded-lg p-2">
+                                                                <p className="text-xs text-gray-600 font-semibold mb-0.5">Course</p>
+                                                                <p className="text-sm font-medium text-gray-900">{registration.courseEnrolled}</p>
+                                                            </div>
+                                                        )}
+                                                        {registration.darseNizamiYear && (
+                                                            <div className="bg-purple-50 rounded-lg p-2">
+                                                                <p className="text-xs text-gray-600 font-semibold mb-0.5">Year</p>
+                                                                <p className="text-sm font-medium text-gray-900">{registration.darseNizamiYear}</p>
+                                                            </div>
+                                                        )}
+                                                        {registration.currentCourseYear && (
+                                                            <div className="bg-green-50 rounded-lg p-2">
+                                                                <p className="text-xs text-gray-600 font-semibold mb-0.5">Current Year</p>
+                                                                <p className="text-sm font-medium text-gray-900">{registration.currentCourseYear}</p>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Additional Details */}
+                                                    {(registration as any).playerRole && (
+                                                        <div className="mt-3 flex items-center text-sm text-gray-600">
+                                                            <span className="font-semibold mr-2">Role:</span>
+                                                            <span>{(registration as any).playerRole}</span>
                                                         </div>
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-sm text-gray-500">Not Assigned</span>
-                                                )}
-                                            </td>
-                                            {/* <td className="px-6 py-4 whitespace-nowrap">
-                                                <div>
-                                                    <div className="text-sm text-gray-900">
-                                                        {new Date(registration?.createdAt || '').toLocaleDateString()}
-                                                    </div>
-                                                    {registration.specialRequirements && (
-                                                        <div className="text-sm text-gray-500">
-                                                            <span className="font-medium">Requirements:</span> {registration.specialRequirements}
+                                                    )}
+                                                    {(registration as any).playingStyle && (
+                                                        <div className="mt-1 flex items-center text-sm text-gray-600">
+                                                            <span className="font-semibold mr-2">Style:</span>
+                                                            <span>{(registration as any).playingStyle}</span>
+                                                        </div>
+                                                    )}
+                                                    {(registration as any).position && (
+                                                        <div className="mt-1 flex items-center text-sm text-gray-600">
+                                                            <span className="font-semibold mr-2">Position:</span>
+                                                            <span>{(registration as any).position}</span>
                                                         </div>
                                                     )}
                                                 </div>
-                                            </td> */}
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                {getStatusBadge(registration.status)}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <div className="flex flex-col gap-1">
-                                                    {getPaymentStatusBadge(registration?.paymentStatus || '')}
-                                                    <span className="text-sm text-gray-500">
-                                                        PKR {registration.amountPaid}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                                <div className="flex flex-col gap-2">
+
+                                                {/* Payment Status */}
+                                                <div className="flex flex-col items-end gap-2 ml-4">
+                                                    {getPaymentStatusBadge(registration.paymentStatus || 'pending', (registration as any).isPaid || false)}
+                                                    <div className="text-right">
+                                                        <p className="text-sm text-gray-600">Amount</p>
+                                                        <p className="text-lg font-bold text-gray-900">PKR {registration.amountPaid || 0}</p>
+                                                    </div>
                                                     <Button
-                                                        variant="primary"
                                                         size="sm"
-                                                        onClick={() => startEditing(registration)}
+                                                        variant={(registration as any).isPaid ? "secondary" : "primary"}
+                                                        onClick={() => handleMarkPayment(registration)}
                                                     >
-                                                        Edit Details
+                                                        {(registration as any).isPaid ? 'Edit Payment' : 'Mark Paid'}
                                                     </Button>
-                                                    {registration.status === 'pending' && (
-                                                        <Button
-                                                            variant="secondary"
-                                                            size="sm"
-                                                            onClick={() => {
-                                                                const reason = prompt('Rejection reason:');
-                                                                if (reason) {
-                                                                    updateRegistration(registration._id!.toString());
-                                                                }
-                                                            }}
-                                                        >
-                                                            Reject
-                                                        </Button>
-                                                    )}
                                                 </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
+                                            </div>
+
+                                            {/* Team Details */}
+                                            {registration.teamName && (
+                                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                                    <p className="text-sm text-gray-600 mb-1">
+                                                        <span className="font-semibold">Team:</span> {registration.teamName}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Special Requirements */}
+                                            {registration.specialRequirements && (
+                                                <div className="mt-4 pt-4 border-t border-gray-200">
+                                                    <p className="text-sm text-gray-600 mb-1">
+                                                        <span className="font-semibold">Special Requirements:</span>
+                                                    </p>
+                                                    <p className="text-sm text-gray-700">{registration.specialRequirements}</p>
+                                                </div>
+                                            )}
+
+                                            {/* Action Buttons */}
+                                            <div className="flex gap-2 mt-6 pt-4 border-t border-gray-200">
+                                                <Button
+                                                    variant="primary"
+                                                    size="sm"
+                                                    onClick={() => startEditing(registration)}
+                                                >
+                                                    Edit Details
+                                                </Button>
+                                                {registration.status === 'pending' && (
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        onClick={() => {
+                                                            if (confirm('Are you sure you want to reject this registration?')) {
+                                                                updateRegistration(registration._id!.toString(), {
+                                                                    status: 'rejected'
+                                                                });
+                                                            }
+                                                        }}
+                                                    >
+                                                        Reject
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </Card>
+                        ))
                     )}
-                </Card>
+                </div>
+
+                {/* Payment Modal */}
+                {paymentModalOpen && selectedRegistration && (
+                    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                        <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                            <div className="mt-3">
+                                <h3 className="text-lg font-medium text-gray-900 mb-4">Mark Payment</h3>
+
+                                <div className="space-y-4">
+                                    <div className="flex items-center">
+                                        <input
+                                            type="checkbox"
+                                            checked={isPaid}
+                                            onChange={(e) => setIsPaid(e.target.checked)}
+                                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                                        />
+                                        <label className="ml-2 block text-sm text-gray-900">
+                                            Has Paid
+                                        </label>
+                                    </div>
+
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Amount Paid (PKR)
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={paymentAmount}
+                                            onChange={(e) => setPaymentAmount(e.target.value)}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder="0"
+                                        />
+                                    </div>
+
+                                    <div className="flex gap-2 justify-end">
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => {
+                                                setPaymentModalOpen(false);
+                                                setSelectedRegistration(null);
+                                            }}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            variant="primary"
+                                            onClick={handleSubmitPayment}
+                                        >
+                                            Save Payment
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* Edit Modal */}
                 {editingRegistration && (
                     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                        <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+                        <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
                             <div className="mt-3">
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Registration Details</h3>
 
@@ -303,77 +492,87 @@ export default function EventParticipants() {
                                                 Name
                                             </label>
                                             <Input
-                                                value={editForm.name}
+                                                value={editForm.name || ''}
                                                 onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
                                             />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Email
+                                                Contact Number
                                             </label>
                                             <Input
-                                                value={editForm.email}
-                                                onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                                                value={editForm.contactNo || ''}
+                                                onChange={(e) => setEditForm({ ...editForm, contactNo: e.target.value })}
                                             />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Phone
+                                                Course Enrolled
                                             </label>
                                             <Input
-                                                value={editForm.phone}
-                                                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                                                value={editForm.courseEnrolled || ''}
+                                                onChange={(e) => setEditForm({ ...editForm, courseEnrolled: e.target.value })}
                                             />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Student ID
+                                                Darse Nizami Year
                                             </label>
                                             <Input
-                                                value={editForm.studentId}
-                                                onChange={(e) => setEditForm({ ...editForm, studentId: e.target.value })}
+                                                value={editForm.darseNizamiYear || ''}
+                                                onChange={(e) => setEditForm({ ...editForm, darseNizamiYear: e.target.value })}
                                             />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Department
+                                                Current Course Year
                                             </label>
                                             <Input
-                                                value={editForm.department}
-                                                onChange={(e) => setEditForm({ ...editForm, department: e.target.value })}
+                                                value={editForm.currentCourseYear || ''}
+                                                onChange={(e) => setEditForm({ ...editForm, currentCourseYear: e.target.value })}
                                             />
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Emergency Contact
+                                                Timings
                                             </label>
                                             <Input
-                                                value={editForm.emergencyContact}
-                                                onChange={(e) => setEditForm({ ...editForm, emergencyContact: e.target.value })}
+                                                value={editForm.timings || ''}
+                                                onChange={(e) => setEditForm({ ...editForm, timings: e.target.value })}
                                             />
                                         </div>
                                         {editForm.teamName && (
-                                            <>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                        Team Name
-                                                    </label>
-                                                    <Input
-                                                        value={editForm.teamName || ''}
-                                                        onChange={(e) => setEditForm({ ...editForm, teamName: e.target.value })}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                        Team Members
-                                                    </label>
-                                                    <Input
-                                                        value={editForm.teamMembers || ''}
-                                                        onChange={(e) => setEditForm({ ...editForm, teamMembers: e.target.value })}
-                                                        placeholder="Comma separated names"
-                                                    />
-                                                </div>
-                                            </>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Team Name
+                                                </label>
+                                                <Input
+                                                    value={editForm.teamName || ''}
+                                                    onChange={(e) => setEditForm({ ...editForm, teamName: e.target.value })}
+                                                />
+                                            </div>
+                                        )}
+                                        {editForm.playerRole && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Player Role
+                                                </label>
+                                                <Input
+                                                    value={editForm.playerRole || ''}
+                                                    onChange={(e) => setEditForm({ ...editForm, playerRole: e.target.value })}
+                                                />
+                                            </div>
+                                        )}
+                                        {editForm.playingStyle && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Playing Style
+                                                </label>
+                                                <Input
+                                                    value={editForm.playingStyle || ''}
+                                                    onChange={(e) => setEditForm({ ...editForm, playingStyle: e.target.value })}
+                                                />
+                                            </div>
                                         )}
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -410,7 +609,7 @@ export default function EventParticipants() {
                                             </label>
                                             <Input
                                                 type="number"
-                                                value={editForm.amountPaid}
+                                                value={editForm.amountPaid || 0}
                                                 onChange={(e) => setEditForm({ ...editForm, amountPaid: parseFloat(e.target.value) })}
                                             />
                                         </div>
@@ -431,14 +630,14 @@ export default function EventParticipants() {
                                             Admin Notes
                                         </label>
                                         <textarea
-                                            value={editForm.notes || ''}
-                                            onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })}
+                                            value={editForm.adminNotes || ''}
+                                            onChange={(e) => setEditForm({ ...editForm, adminNotes: e.target.value })}
                                             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             rows={3}
                                             placeholder="Add admin notes here..."
                                         />
                                     </div>
-                                    <div className="flex gap-2 justify-end">
+                                    <div className="flex gap-2 justify-end pt-4 border-t">
                                         <Button
                                             variant="secondary"
                                             onClick={() => {
@@ -450,7 +649,7 @@ export default function EventParticipants() {
                                         </Button>
                                         <Button
                                             variant="primary"
-                                            onClick={() => updateRegistration(editingRegistration)}
+                                            onClick={() => updateRegistration(editingRegistration, editForm)}
                                         >
                                             Save Changes
                                         </Button>

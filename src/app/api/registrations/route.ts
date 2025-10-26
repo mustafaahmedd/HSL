@@ -183,20 +183,65 @@ export async function PUT(request: NextRequest) {
     await dbConnect();
 
     const body = await request.json();
-    const { registrationId, status, rejectionReason } = body;
+    const { 
+      registrationId, 
+      status, 
+      rejectionReason,
+      name,
+      contactNo,
+      courseEnrolled,
+      darseNizamiYear,
+      currentCourseYear,
+      timings,
+      teamName,
+      specialRequirements,
+      paymentStatus,
+      amountPaid,
+      isPaid,
+      adminNotes,
+      playerRole,
+      playingStyle,
+      position,
+    } = body;
 
-    if (!registrationId || !status) {
+    if (!registrationId) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields to update registrant details' },
         { status: 400 }
       );
     }
 
-    const updateData: any = {
-      status,
-      approvedAt: status === 'approved' ? new Date() : undefined,
-      rejectionReason: status === 'rejected' ? rejectionReason : undefined,
-    };
+    const updateData: any = {};
+    
+    // Update status-related fields
+    if (status) {
+      updateData.status = status;
+      updateData.approvedAt = status === 'approved' ? new Date() : undefined;
+      updateData.rejectionReason = status === 'rejected' ? rejectionReason : undefined;
+    }
+    
+    // Update personal information
+    if (name !== undefined) updateData.name = name;
+    if (contactNo !== undefined) updateData.contactNo = contactNo;
+    if (courseEnrolled !== undefined) updateData.courseEnrolled = courseEnrolled;
+    if (darseNizamiYear !== undefined) updateData.darseNizamiYear = darseNizamiYear;
+    if (currentCourseYear !== undefined) updateData.currentCourseYear = currentCourseYear;
+    if (timings !== undefined) updateData.timings = timings;
+    if (teamName !== undefined) updateData.teamName = teamName;
+    if (specialRequirements !== undefined) updateData.specialRequirements = specialRequirements;
+    
+    // Update payment information
+    if (paymentStatus !== undefined) updateData.paymentStatus = paymentStatus;
+    if (amountPaid !== undefined) updateData.amountPaid = amountPaid;
+    if (isPaid !== undefined) updateData.isPaid = isPaid;
+    
+    // Update admin fields
+    if (adminNotes !== undefined) updateData.adminNotes = adminNotes;
+    
+    // Update sport-specific fields
+    if (playerRole !== undefined) updateData.playerRole = playerRole;
+    if (playingStyle !== undefined) updateData.playingStyle = playingStyle;
+    if (position !== undefined) updateData.position = position;
 
     const registration = await Registration.findByIdAndUpdate(
       registrationId,
