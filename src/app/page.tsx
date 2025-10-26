@@ -51,10 +51,9 @@ const previousEvents = [
 
 // HSL Statistics
 const hslStats = {
-  totalEvents: 24,
-  totalParticipants: 1200,
-  totalRevenue: 180000,
-  activeMembers: 150
+  totalEvents: 12,
+  totalParticipants: 450,
+  activeMembers: 200
 };
 
 export default function HSLHome() {
@@ -156,23 +155,23 @@ export default function HSLHome() {
             <p className="text-xl text-gray-200">Building a stronger community through shared experiences</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 items-center justify-center">
             <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-1 sm:hover:-translate-y-2">
-              <div className="text-3xl sm:text-4xl lg:text-5xl font-bold text-purple-300 mb-2 sm:mb-3">{hslStats.totalEvents}</div>
+              <div className="text-3xl sm:text-4xl lg:text-5xl font-bold text-purple-300 mb-2 sm:mb-3">{hslStats.totalEvents}+</div>
               <div className="text-gray-200 font-medium text-sm sm:text-base">Events Organized</div>
             </div>
             <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-1 sm:hover:-translate-y-2">
-              <div className="text-3xl sm:text-4xl lg:text-5xl font-bold text-blue-300 mb-2 sm:mb-3">{hslStats.totalParticipants}</div>
+              <div className="text-3xl sm:text-4xl lg:text-5xl font-bold text-blue-300 mb-2 sm:mb-3">{hslStats.totalParticipants}+</div>
               <div className="text-gray-200 font-medium text-sm sm:text-base">Total Participants</div>
             </div>
             <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-1 sm:hover:-translate-y-2">
-              <div className="text-3xl sm:text-4xl lg:text-5xl font-bold text-pink-300 mb-2 sm:mb-3">{hslStats.activeMembers}</div>
+              <div className="text-3xl sm:text-4xl lg:text-5xl font-bold text-pink-300 mb-2 sm:mb-3">{hslStats.activeMembers}+</div>
               <div className="text-gray-200 font-medium text-sm sm:text-base">Active Members</div>
             </div>
-            <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-1 sm:hover:-translate-y-2">
+            {/* <div className="text-center bg-white/10 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 lg:p-8 hover:bg-white/20 transition-all duration-300 transform hover:-translate-y-1 sm:hover:-translate-y-2">
               <div className="text-2xl sm:text-3xl lg:text-4xl font-bold text-green-300 mb-2 sm:mb-3">PKR {hslStats.totalRevenue.toLocaleString()}</div>
               <div className="text-gray-200 font-medium text-sm sm:text-base">Community Revenue</div>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>
@@ -215,10 +214,15 @@ export default function HSLHome() {
                         <span className="text-white font-medium">{event.venue}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Price:</span>
-                        <span className="text-green-300 font-medium">
-                          {event.pricePerPerson > 0 ? `PKR ${event.pricePerPerson}` : 'Free'}
-                        </span>
+                        <span>Charges:</span>
+                        <div>
+                          <span className="text-green-300 font-medium">
+                            {event.pricePerPerson > 0 ? `PKR ${event.pricePerPerson}` : 'Free'}
+                          </span>
+                          <span className="text-gray-300 font-medium">
+                            {event.pricePerPerson > 0 ? `/person` : ''}
+                          </span>
+                        </div>
                       </div>
                     </div>
                     <div className="mt-4 space-y-2">

@@ -12,7 +12,7 @@ interface CricketRegistrationFormProps {
 
 const courseOptions = [
     { value: 'Darse Nizami', label: 'Darse Nizami' },
-    { value: 'QS / QHD / Pre Oula', label: 'QS / QHD / Pre Oula' },
+    { value: 'Courses', label: 'Courses' },
     // { value: 'Reviving Hearts', label: 'Reviving Hearts' },
 ];
 
@@ -245,29 +245,29 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
                                             value={formData.darseNizamiYear}
                                             onChange={handleInputChange}
                                             // required
-                                            options={[{ value: '', label: 'Select...' }, ...darseNizamiYears]}
+                                            options={darseNizamiYears}
                                         />
                                     )}
 
-                                    {formData.courseEnrolled === 'QS / QHD / Pre Oula' && (
+                                    {formData.courseEnrolled === 'Courses' && (
                                         <Select
                                             label="In which year of course are you currently studying?"
                                             name="currentCourseYear"
                                             value={formData.currentCourseYear}
                                             onChange={handleInputChange}
                                             // required
-                                            options={[{ value: '', label: 'Select...' }, ...courseYears]}
+                                            options={courseYears}
                                         />
                                     )}
 
-                                    {(formData.courseEnrolled === 'Darse Nizami' || formData.courseEnrolled === 'QS / QHD / Pre Oula') && (
+                                    {(formData.courseEnrolled === 'Darse Nizami' || formData.courseEnrolled === 'Courses') && (
                                         <Select
                                             label="What are your timings?"
                                             name="timings"
                                             value={formData.timings}
                                             onChange={handleInputChange}
                                             // required
-                                            options={[{ value: '', label: 'Select...' }, ...timingOptions]}
+                                            options={timingOptions}
                                         />
                                     )}
                                 </>
@@ -315,7 +315,6 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
                                 onChange={handleInputChange}
                                 required
                                 options={[
-                                    { value: '', label: 'Select...' },
                                     { value: 'yes', label: "Yeah, I'm in :)" },
                                     { value: 'auction_only', label: 'Only auction based one.' }
                                 ]}
@@ -333,7 +332,7 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
                                     });
                                 }}
                                 required
-                                options={[{ value: '', label: 'Select...' }, ...playerRoles]}
+                                options={playerRoles}
                             />
 
                             {formData.playerRole && (
@@ -343,10 +342,7 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
                                     value={formData.playingStyle}
                                     onChange={handleInputChange}
                                     required
-                                    options={[
-                                        { value: '', label: 'Select...' },
-                                        ...(playingStyles[formData.playerRole] || [])
-                                    ]}
+                                    options={playingStyles[formData.playerRole] || []}
                                 />
                             )}
 
@@ -356,7 +352,7 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
                                 value={formData.skillLevel}
                                 onChange={handleInputChange}
                                 required
-                                options={[{ value: '', label: 'Select...' }, ...skillLevelStars]}
+                                options={skillLevelStars}
                             />
 
                             <Select
@@ -366,7 +362,6 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
                                 onChange={handleInputChange}
                                 required
                                 options={[
-                                    { value: '', label: 'Select...' },
                                     { value: 'yes', label: "Yes, I will be." },
                                     { value: 'no', label: "No, I'll play as a normal player." }
                                 ]}
@@ -378,7 +373,7 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
                                 value={formData.selfAssignedCategory}
                                 onChange={handleInputChange}
                                 required
-                                options={[{ value: '', label: 'Select...' }, ...categoryOptions]}
+                                options={categoryOptions}
                             />
                         </div>
                     </div>
