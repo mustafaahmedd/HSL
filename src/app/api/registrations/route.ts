@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       .populate('playerId', 'name email phone')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(limit);
+    //   .limit(limit);
 
     const total = await Registration.countDocuments(query);
 
