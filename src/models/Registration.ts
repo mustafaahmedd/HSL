@@ -86,10 +86,16 @@ const RegistrationSchema = new Schema<IRegistration>(
       type: String,
       trim: true,
     },
-    type: {
+    playerRole: {
       type: String,
       trim: true,
     },
+    playingStyle: {
+      type: String,
+      trim: true,
+    },
+    
+    // Other sports
     position: {
       type: String,
       trim: true,
@@ -138,7 +144,6 @@ const RegistrationSchema = new Schema<IRegistration>(
       finalName: { type: String, trim: true },
       finalEmail: { type: String, trim: true },
       finalPhone: { type: String, trim: true },
-      finalTeamName: { type: String, trim: true },
     },
     approvedBy: {
       type: Schema.Types.ObjectId,

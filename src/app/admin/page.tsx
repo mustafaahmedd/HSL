@@ -470,7 +470,10 @@ export default function AdminDashboard() {
         {/* Teams Section */}
         <Card title="Teams" className="mb-8">
           <div className="mb-4">
-            <Button onClick={() => setShowTeamForm(!showTeamForm)}>
+            {/* <Button onClick={() => setShowTeamForm(!showTeamForm)}>
+              Create Team
+            </Button> */}
+            <Button type="button" variant="primary" onClick={() => window.open('/admin/teams/create', '_blank')}>
               Create Team
             </Button>
           </div>
@@ -511,7 +514,7 @@ export default function AdminDashboard() {
                 <div key={team._id?.toString()} className="p-3 bg-gray-50 rounded">
                   <h4 className="font-semibold">{team.name}</h4>
                   <p className="text-sm text-gray-600">
-                    Owner: {team.owner} | Budget: {team.totalBudget} | Spent: {team.pointsSpent}
+                    Owner: {team.owner} | Budget: {team.totalPoints} | Spent: {team.pointsSpent}
                   </p>
                 </div>
               ))

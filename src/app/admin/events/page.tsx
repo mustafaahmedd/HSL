@@ -94,9 +94,9 @@ export default function AdminEvents() {
 
     const getEventTypeBadge = (type: string) => {
         const typeColors = {
+            auction: 'bg-blue-100 text-blue-800',
             tournament: 'bg-purple-100 text-purple-800',
             activity: 'bg-green-100 text-green-800',
-            event: 'bg-blue-100 text-blue-800',
             competition: 'bg-orange-100 text-orange-800',
         };
 
@@ -218,7 +218,9 @@ export default function AdminEvents() {
                                     <Button
                                         variant="secondary"
                                         className="w-full"
-                                        onClick={() => window.open(`/admin/events/${event._id}/participants`)}
+                                        onClick={() => {
+                                            window.location.href = `/admin/events/${event._id}/participants`;
+                                        }}
                                     >
                                         View Participants ({event.totalParticipants})
                                     </Button>

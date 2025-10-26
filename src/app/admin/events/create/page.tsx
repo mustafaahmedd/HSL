@@ -163,9 +163,9 @@ export default function CreateEvent() {
                                     value={eventForm.eventType}
                                     onChange={(e) => setEventForm({ ...eventForm, eventType: e.target.value })}
                                     options={[
+                                        { value: 'auction', label: 'Auction' },
                                         { value: 'tournament', label: 'Tournament' },
                                         { value: 'activity', label: 'Activity' },
-                                        { value: 'event', label: 'Event' },
                                         { value: 'competition', label: 'Competition' },
                                     ]}
                                 />

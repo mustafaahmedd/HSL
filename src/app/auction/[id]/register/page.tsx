@@ -376,12 +376,12 @@ export default function TeamRegistration() {
                                         <tr key={team._id?.toString()}>
                                             <td className="px-6 py-4 whitespace-nowrap font-medium">{team.name}</td>
                                             <td className="px-6 py-4 whitespace-nowrap">{team.owner}</td>
-                                            <td className="px-6 py-4 whitespace-nowrap">PKR {team.totalBudget.toLocaleString()}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap">PKR {team.totalPoints?.toLocaleString()}</td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`font-medium ${team.pointsLeft > 5000 ? 'text-green-600' :
-                                                    team.pointsLeft > 2000 ? 'text-yellow-600' : 'text-red-600'
+                                                <span className={`font-medium ${team.pointsLeft && team.pointsLeft > 5000 ? 'text-green-600' :
+                                                    team.pointsLeft && team.pointsLeft > 2000 ? 'text-yellow-600' : 'text-red-600'
                                                     }`}>
-                                                    PKR {team.pointsLeft.toLocaleString()}
+                                                    PKR {team.pointsLeft && team.pointsLeft.toLocaleString()}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">{team.players?.length || 0}</td>

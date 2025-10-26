@@ -34,7 +34,12 @@ export async function POST(request: NextRequest) {
       skillLevel: formData.get('skillLevel') as string,
       iconPlayerRequest: formData.get('iconPlayerRequest') === 'true' || formData.get('iconPlayerRequest') === 'yes',
       selfAssignedCategory: formData.get('selfAssignedCategory') as string,
-      type: formData.get('type') as string || undefined,
+      
+      // Cricket specific - renamed from 'type' to 'playerRole'
+      playerRole: formData.get('playerRole') as string || undefined,
+      playingStyle: formData.get('playingStyle') as string || undefined,
+      
+      // Other sports
       position: formData.get('position') as string || undefined,
       experience: formData.get('experience') as string || undefined,
       subject: formData.get('subject') as string || undefined,
@@ -117,7 +122,6 @@ export async function POST(request: NextRequest) {
         skillLevel: formFields.skillLevel ?? 'Beginner',
         iconPlayerRequest: formFields.iconPlayerRequest ?? false,
         selfAssignedCategory: formFields.selfAssignedCategory ?? 'Bronze',
-        type: formFields.type ?? 'Player',
       };
 
       player = await Player.create(playerData);
@@ -150,7 +154,12 @@ export async function POST(request: NextRequest) {
       skillLevel: formFields.skillLevel,
       iconPlayerRequest: formFields.iconPlayerRequest,
       selfAssignedCategory: formFields.selfAssignedCategory,
-      type: formFields.type,
+      
+      // Cricket specific - renamed from 'type' to 'playerRole'
+      playerRole: formFields.playerRole,
+      playingStyle: formFields.playingStyle,
+      
+      // Other sports
       position: formFields.position,
       experience: formFields.experience,
       level: formFields.level,

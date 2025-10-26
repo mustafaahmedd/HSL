@@ -4,7 +4,7 @@ export interface ITournament {
   _id?: Types.ObjectId;
   name: string;
   description?: string;
-  eventType: 'tournament' | 'activity' | 'event' | 'competition';
+  eventType: 'auction' | 'tournament' | 'activity' | 'competition';
   status: 'registration' | 'setup' | 'live' | 'completed';
   startDate: Date;
   endDate?: Date;

@@ -548,7 +548,7 @@ export default function AuctionManagement() {
                                         <div className="flex-1">
                                             <div className="font-medium">{team.name}</div>
                                             <div className="text-sm text-gray-600">Owner: {team.owner}</div>
-                                            <div className="text-sm text-gray-600">Budget: PKR {team.totalBudget.toLocaleString()}</div>
+                                            <div className="text-sm text-gray-600">Budget: PKR {team.totalPoints?.toLocaleString()}</div>
                                         </div>
                                     </label>
                                 ))}

@@ -15,7 +15,7 @@ const EventSchema = new Schema<IEvent>(
     },
     eventType: {
       type: String,
-      enum: ['tournament', 'activity', 'event', 'competition'],
+      enum: ['auction', 'tournament', 'activity', 'competition'],
       required: true,
     },
     sport: {

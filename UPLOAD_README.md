@@ -1,37 +1,43 @@
 # File Upload System
 
-This Next.js application includes a comprehensive file upload system that handles local storage similar to your Node.js multer middleware.
+This Next.js application includes a comprehensive file upload system that uses **Cloudinary** for cloud-based image storage. This is the recommended approach for production deployments, especially on platforms like Vercel.
 
 ## Features
 
-- **Local File Storage**: Files are stored in the `public/uploads/` directory
+- **Cloud Storage**: Files are stored in Cloudinary cloud storage
 - **File Validation**: Automatic validation of file types and sizes
 - **Multiple Categories**: Organized uploads by category (events, players, registrations, auctions)
 - **React Hooks**: Easy-to-use hooks for file uploads
 - **Reusable Components**: Pre-built upload components
 - **Error Handling**: Comprehensive error handling and validation
+- **CDN Delivery**: Fast image delivery via Cloudinary's global CDN
 
-## Directory Structure
+## Setup
 
+Before using the upload system, you need to:
+
+1. Create a Cloudinary account at [https://cloudinary.com](https://cloudinary.com)
+2. Get your credentials from the Cloudinary dashboard
+3. Add environment variables to your `.env.local` file:
+
+```env
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
-public/
-  uploads/
-    events/          # Event images
-    players/         # Player photos
-    registrations/   # Registration photos
-    auctions/        # Auction-related images
-    general/         # General uploads
-```
+
+For detailed setup instructions, see [CLOUDINARY_SETUP.md](CLOUDINARY_SETUP.md).
+For folder structure and organization details, see [CLOUDINARY_FOLDER_SETUP.md](CLOUDINARY_FOLDER_SETUP.md).
 
 ## API Endpoints
 
 ### Upload Files
-- **POST** `/api/upload`
+- **POST** `/api/upload` - Upload files to Cloudinary
 - **GET** `/api/upload` - Get upload configuration
 
 ### Updated API Routes
-- **POST** `/api/events` - Now handles image uploads
-- **POST** `/api/register` - Now handles photo uploads
+- **POST** `/api/events` - Now handles image uploads via Cloudinary
+- **POST** `/api/register` - Now handles photo uploads via Cloudinary
 
 ## Usage Examples
 
@@ -122,49 +128,70 @@ interface UploadConfig {
 }
 ```
 
-## File Naming Convention
+## File Storage and URLs
 
+### Cloudinary Storage
+Files are stored in Cloudinary with the following structure:
+- Folder-based organization by category
+- Automatic unique naming: `{category}_{timestamp}`
+- Secure HTTPS URLs for all images
+
+### Example Cloudinary URLs
+```
+https://res.cloudinary.com/your_cloud_name/image/upload/events/events_1703123456789.jpg
+https://res.cloudinary.com/your_cloud_name/image/upload/players/players_1703123456789.jpg
+```
+
+### File Naming Convention
 Files are automatically renamed using the pattern:
 ```
-{category}_{timestamp}{extension}
+{category}_{timestamp}
 ```
 
-Example: `events_1703123456789.jpg`
+Example: `events_1703123456789.jpg` stored in the `events` folder
 
-## Error Handling
+## Benefits of Cloudinary
 
-The system provides comprehensive error handling:
+### ✅ **Global CDN**
+- Images delivered via Cloudinary's CDN
+- Fast loading times worldwide
+- Reduced server load
 
-- **File Size Validation**: Files exceeding the size limit
-- **File Type Validation**: Unsupported file types
-- **Authentication**: Required for uploads
-- **Storage Errors**: Disk space or permission issues
+### ✅ **Automatic Optimization**
+- Automatic format optimization (WebP, AVIF)
+- Responsive image generation
+- Quality optimization
 
-## Migration from Previous System
+### ✅ **Serverless Compatible**
+- No local file storage needed
+- Perfect for Vercel, Netlify, and similar platforms
+- No disk space limitations
 
-The new system is backward compatible. Existing code that stores file names will continue to work, but now files are actually saved to disk.
+### ✅ **Free Tier**
+- 25GB storage
+- 25GB monthly bandwidth
+- Unlimited transformations
 
-### Before (storing only filenames):
+## Migration from Local Storage
+
+If you previously used local file storage:
+
+### Before (Local Storage):
 ```typescript
-const fileName = `event-${Date.now()}-${file.name}`;
-images.push({
-  url: `/uploads/events/${fileName}`,
-  caption: `Event image ${i + 1}`,
-  isPrimary: i === 0
-});
+// Files stored locally
+url: `/uploads/events/events_1703123456789.jpg`
 ```
 
-### After (actual file upload):
+### After (Cloudinary):
 ```typescript
-const uploadedFiles = await saveFiles(imageFiles, 'events');
-uploadedFiles.forEach((file, index) => {
-  images.push({
-    url: file.url,
-    caption: `Event image ${index + 1}`,
-    isPrimary: index === 0
-  });
-});
+// Files stored in Cloudinary
+url: `https://res.cloudinary.com/your_cloud_name/image/upload/events/events_1703123456789.jpg`
 ```
+
+### Migration Steps:
+1. Upload existing images to Cloudinary
+2. Update database URLs from local paths to Cloudinary URLs
+3. Test image access in production
 
 ## Security Considerations
 
@@ -172,17 +199,24 @@ uploadedFiles.forEach((file, index) => {
 - Authentication is required for uploads
 - File types are restricted to images
 - File sizes are limited
-- Files are stored outside the application root
+- Cloudinary uses secure HTTPS URLs
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Upload fails**: Check file size and type
+1. **Upload fails**: Check Cloudinary credentials in environment variables
 2. **Authentication error**: Ensure admin token is present
-3. **Directory permissions**: Ensure write permissions on `public/uploads/`
-4. **File not found**: Check if file was actually saved to disk
+3. **Missing environment variables**: Verify all Cloudinary credentials are set
+4. **File not found**: Check Cloudinary Media Library for uploaded files
 
 ### Debug Mode
 
 Enable debug logging by checking the browser console and server logs for detailed error messages.
+
+## Support
+
+For more information about Cloudinary:
+- [Cloudinary Documentation](https://cloudinary.com/documentation)
+- [Setup Instructions](CLOUDINARY_SETUP.md)
+- [Cloudinary Console](https://console.cloudinary.com/)

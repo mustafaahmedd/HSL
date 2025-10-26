@@ -45,12 +45,45 @@ const timingOptions = [
     { value: 'Weekend Evening', label: 'Weekend Evening' },
 ];
 
-const playerTypes = [
+const playerRoles = [
     { value: 'Batsman', label: 'Batsman' },
     { value: 'Bowler', label: 'Bowler' },
     { value: 'Batting All Rounder', label: 'Batting All Rounder' },
     { value: 'Bowling All Rounder', label: 'Bowling All Rounder' },
 ];
+
+const playingStyles: { [key: string]: { value: string; label: string }[] } = {
+    'Batsman': [
+        { value: 'Right Hand Batsman', label: 'Right Hand Batsman' },
+        { value: 'Left Hand Batsman', label: 'Left Hand Batsman' },
+    ],
+    'Bowler': [
+        { value: 'Right Arm Fast', label: 'Right Arm Fast' },
+        { value: 'Left Arm Fast', label: 'Left Arm Fast' },
+        { value: 'Right Arm Spin', label: 'Right Arm Spin' },
+        { value: 'Left Arm Spin', label: 'Left Arm Spin' },
+    ],
+    'Batting All Rounder': [
+        { value: 'Right Hand Batsman + Right Arm Fast', label: 'Right Hand Batsman + Right Arm Fast' },
+        { value: 'Right Hand Batsman + Right Arm Spin', label: 'Right Hand Batsman + Right Arm Spin' },
+        { value: 'Right Hand Batsman + Left Arm Fast', label: 'Right Hand Batsman + Left Arm Fast' },
+        { value: 'Right Hand Batsman + Left Arm Spin', label: 'Right Hand Batsman + Left Arm Spin' },
+        { value: 'Left Hand Batsman + Right Arm Fast', label: 'Left Hand Batsman + Right Arm Fast' },
+        { value: 'Left Hand Batsman + Right Arm Spin', label: 'Left Hand Batsman + Right Arm Spin' },
+        { value: 'Left Hand Batsman + Left Arm Fast', label: 'Left Hand Batsman + Left Arm Fast' },
+        { value: 'Left Hand Batsman + Left Arm Spin', label: 'Left Hand Batsman + Left Arm Spin' },
+    ],
+    'Bowling All Rounder': [
+        { value: 'Right Arm Fast + Right Hand Batsman', label: 'Right Arm Fast + Right Hand Batsman' },
+        { value: 'Right Arm Spin + Right Hand Batsman', label: 'Right Arm Spin + Right Hand Batsman' },
+        { value: 'Left Arm Fast + Right Hand Batsman', label: 'Left Arm Fast + Right Hand Batsman' },
+        { value: 'Left Arm Spin + Right Hand Batsman', label: 'Left Arm Spin + Right Hand Batsman' },
+        { value: 'Right Arm Fast + Left Hand Batsman', label: 'Right Arm Fast + Left Hand Batsman' },
+        { value: 'Right Arm Spin + Left Hand Batsman', label: 'Right Arm Spin + Left Hand Batsman' },
+        { value: 'Left Arm Fast + Left Hand Batsman', label: 'Left Arm Fast + Left Hand Batsman' },
+        { value: 'Left Arm Spin + Left Hand Batsman', label: 'Left Arm Spin + Left Hand Batsman' },
+    ],
+};
 
 const skillLevelStars = [
     { value: '1', label: '1 Star' },
@@ -84,7 +117,8 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
         timings: '',
         playedPreviousLeague: false,
         playBothTournaments: '',
-        type: '',
+        playerRole: '',
+        playingStyle: '',
         skillLevel: '',
         iconPlayerRequest: '',
         selfAssignedCategory: '',
@@ -288,13 +322,33 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
                             />
 
                             <Select
-                                label="Player Type"
-                                name="type"
-                                value={formData.type}
-                                onChange={handleInputChange}
+                                label="Player Role"
+                                name="playerRole"
+                                value={formData.playerRole}
+                                onChange={(e) => {
+                                    setFormData({
+                                        ...formData,
+                                        playerRole: e.target.value,
+                                        playingStyle: '' // Reset playing style when role changes
+                                    });
+                                }}
                                 required
-                                options={[{ value: '', label: 'Select...' }, ...playerTypes]}
+                                options={[{ value: '', label: 'Select...' }, ...playerRoles]}
                             />
+
+                            {formData.playerRole && (
+                                <Select
+                                    label="Playing Style"
+                                    name="playingStyle"
+                                    value={formData.playingStyle}
+                                    onChange={handleInputChange}
+                                    required
+                                    options={[
+                                        { value: '', label: 'Select...' },
+                                        ...(playingStyles[formData.playerRole] || [])
+                                    ]}
+                                />
+                            )}
 
                             <Select
                                 label="Your skill level"

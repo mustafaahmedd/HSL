@@ -280,7 +280,7 @@ export default function PublicAuctionView() {
                                                 { value: '', label: 'Choose your team...' },
                                                 ...teams.map(team => ({
                                                     value: team._id?.toString() || '',
-                                                    label: `${team.name} (${team.owner}) - PKR ${team.pointsLeft.toLocaleString()} remaining`
+                                                    label: `${team.name} (${team.owner}) - PKR ${team.pointsLeft?.toLocaleString() || 0} remaining`
                                                 }))
                                             ]}
                                         />
@@ -430,7 +430,7 @@ export default function PublicAuctionView() {
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {teams
-                                        .sort((a, b) => b.pointsLeft - a.pointsLeft)
+                                        .sort((a, b) => (b.pointsLeft || 0) - (a.pointsLeft || 0))
                                         .map((team, index) => (
                                             <tr key={team._id?.toString()}>
                                                 <td className="px-6 py-4 whitespace-nowrap">
@@ -439,10 +439,10 @@ export default function PublicAuctionView() {
                                                 <td className="px-6 py-4 whitespace-nowrap font-medium">{team.name}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap">{team.owner}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
-                                                    <span className={`font-medium ${team.pointsLeft > 5000 ? 'text-green-600' :
-                                                        team.pointsLeft > 2000 ? 'text-yellow-600' : 'text-red-600'
+                                                    <span className={`font-medium ${team.pointsLeft && team.pointsLeft > 5000 ? 'text-green-600' :
+                                                        team.pointsLeft && team.pointsLeft > 2000 ? 'text-yellow-600' : 'text-red-600'
                                                         }`}>
-                                                        PKR {team.pointsLeft.toLocaleString()}
+                                                        PKR {team.pointsLeft && team.pointsLeft.toLocaleString()}
                                                     </span>
                                                 </td>
                                                 <td className="px-6 py-4 whitespace-nowrap">

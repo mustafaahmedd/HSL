@@ -138,33 +138,32 @@ export default function TeamsView() {
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="opacity-75">Owner:</span>
-                    <span className="ml-2 font-medium">{team.owner}</span>
+                    <span className="ml-2 font-medium">{team.owner || 'N/A'}</span>
                   </div>
                   <div>
                     <span className="opacity-75">Captain:</span>
-                    <span className="ml-2 font-medium">
-                      {Array.isArray(team.players) &&
-                        team.players.find(p => p.role === 'Captain')?.name || 'Not Set'}
-                    </span>
+                    <span className="ml-2 font-medium">{team.captain || 'Not Set'}</span>
                   </div>
                 </div>
               </div>
 
               {/* Budget Info */}
-              <div className="bg-gray-100 px-6 py-4 grid grid-cols-3 gap-4 text-center">
-                <div>
-                  <p className="text-xs text-gray-600">Total Budget</p>
-                  <p className="text-lg font-bold text-gray-900">{team.totalBudget}</p>
+              {team.eventType === 'auction' && (
+                <div className="bg-gray-100 px-6 py-4 grid grid-cols-3 gap-4 text-center">
+                  <div>
+                    <p className="text-xs text-gray-600">Total Budget</p>
+                    <p className="text-lg font-bold text-gray-900">{team.totalPoints || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Points Spent</p>
+                    <p className="text-lg font-bold text-red-600">{team.pointsSpent || 0}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Points Left</p>
+                    <p className="text-lg font-bold text-green-600">{team.pointsLeft || 0}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-600">Points Spent</p>
-                  <p className="text-lg font-bold text-red-600">{team.pointsSpent}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600">Points Left</p>
-                  <p className="text-lg font-bold text-green-600">{team.pointsLeft}</p>
-                </div>
-              </div>
+              )}
 
               {/* Players List */}
               <div className="p-6">
@@ -174,29 +173,35 @@ export default function TeamsView() {
 
                 {Array.isArray(team.players) && team.players.length > 0 ? (
                   <div className="space-y-3">
-                    {team.players.map((player: any, index: number) => (
-                      <div key={player._id?.toString() || index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-medium text-gray-900">
-                              {player.name}
-                            </span>
-                            {player.role === 'Captain' && (
-                              <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded">C</span>
-                            )}
+                    {team.players.map((p: any, index: number) => {
+                      const playerName = p.playerName || p.registration?.name || 'Unknown Player';
+                      const playerRole = p.registration?.playerRole || p.type || 'Not Set';
+                      const category = p.category || p.registration?.selfAssignedCategory || 'Not Set';
+                      const purchasePrice = p.purchasePrice || 0;
+
+                      return (
+                        <div key={p.registrationId?.toString() || index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium text-gray-900">
+                                {playerName}
+                              </span>
+                            </div>
+                            <div className="flex items-center space-x-2 mt-1">
+                              {getTypeBadge(playerRole)}
+                              {getCategoryBadge(category)}
+                            </div>
                           </div>
-                          <div className="flex items-center space-x-2 mt-1">
-                            {getTypeBadge(player.type || 'Not Set')}
-                            {getCategoryBadge(player.category || player.selfAssignedCategory)}
-                          </div>
+                          {team.eventType === 'auction' && (
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-gray-900">
+                                {purchasePrice} pts
+                              </p>
+                            </div>
+                          )}
                         </div>
-                        <div className="text-right">
-                          <p className="text-sm font-semibold text-gray-900">
-                            {player.bidPrice || 0} pts
-                          </p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
                   <p className="text-gray-500 text-center py-8">No players in this team yet</p>

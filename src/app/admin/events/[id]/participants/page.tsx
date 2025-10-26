@@ -190,9 +190,9 @@ export default function EventParticipants() {
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Team Details
                                         </th>
-                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Registration
-                                        </th>
+                                        </th> */}
                                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                             Status
                                         </th>
@@ -209,7 +209,8 @@ export default function EventParticipants() {
                                         <tr key={String(registration._id)} className="hover:bg-gray-50">
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div>
-                                                    <div className="text-sm font-medium text-gray-900">
+                                                    <span className="text-sm text-gray-500">{getStatusBadge(registration.status)}</span>
+                                                    <div className="py-1 text-lg font-medium text-gray-900 font-bold uppercase">
                                                         {registration.name}
                                                     </div>
                                                 </div>
@@ -229,10 +230,10 @@ export default function EventParticipants() {
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-sm text-gray-500">Individual</span>
+                                                    <span className="text-sm text-gray-500">Not Assigned</span>
                                                 )}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
+                                            {/* <td className="px-6 py-4 whitespace-nowrap">
                                                 <div>
                                                     <div className="text-sm text-gray-900">
                                                         {new Date(registration?.createdAt || '').toLocaleDateString()}
@@ -243,7 +244,7 @@ export default function EventParticipants() {
                                                         </div>
                                                     )}
                                                 </div>
-                                            </td>
+                                            </td> */}
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 {getStatusBadge(registration.status)}
                                             </td>
