@@ -40,6 +40,28 @@ const CopyButton: React.FC<{ text: string }> = ({ text }) => {
     );
 };
 
+// Skill Level Display Component
+const SkillLevelDisplay: React.FC<{ skillLevel: string }> = ({ skillLevel }) => {
+
+    return (
+        <div className="flex items-center gap-1">
+            <span className="text-xs font-medium text-gray-600">{skillLevel}</span>
+            <div className="flex items-center">
+                {[...Array(5)].map((_, i) => (
+                    <svg
+                        key={i}
+                        className={`w-3 h-3 ${i < Number(skillLevel) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                    >
+                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                ))}
+            </div>
+        </div>
+    );
+};
+
 // Image Modal Component
 const ImageModal: React.FC<{ src: string; isOpen: boolean; onClose: () => void }> = ({ src, isOpen, onClose }) => {
     if (!isOpen) return null;
@@ -82,6 +104,11 @@ export default function EventParticipants() {
     const [viewMode, setViewMode] = useState<'card' | 'table'>('card');
     const [searchTerm, setSearchTerm] = useState('');
 
+    // Filter states
+    const [filterIconPlayer, setFilterIconPlayer] = useState<string>('all'); // all, yes, no
+    const [filterPreviousLeague, setFilterPreviousLeague] = useState<string>('all'); // all, yes, no
+    const [filterCategory, setFilterCategory] = useState<string>('all');
+
     // Image modal state
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -103,18 +130,41 @@ export default function EventParticipants() {
     }, [isAuthenticated, eventId]);
 
     useEffect(() => {
-        // Filter registrations based on search term
-        if (searchTerm.trim() === '') {
-            setFilteredRegistrations(registrations);
-        } else {
-            const filtered = registrations.filter(reg =>
+        // Filter registrations based on search term and filters
+        let filtered = registrations;
+
+        // Search filter
+        if (searchTerm.trim() !== '') {
+            filtered = filtered.filter(reg =>
                 reg.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 reg.contactNo.includes(searchTerm) ||
                 (reg.courseEnrolled && reg.courseEnrolled.toLowerCase().includes(searchTerm.toLowerCase()))
             );
-            setFilteredRegistrations(filtered);
         }
-    }, [searchTerm, registrations]);
+
+        // Icon player filter
+        if (filterIconPlayer !== 'all') {
+            filtered = filtered.filter(reg => {
+                const isIconPlayer = (reg as any).iconPlayerRequest || false;
+                return filterIconPlayer === 'yes' ? isIconPlayer : !isIconPlayer;
+            });
+        }
+
+        // Previous league filter
+        if (filterPreviousLeague !== 'all') {
+            filtered = filtered.filter(reg => {
+                const playedPrevious = reg.playedPreviousLeague || false;
+                return filterPreviousLeague === 'yes' ? playedPrevious : !playedPrevious;
+            });
+        }
+
+        // Category filter
+        if (filterCategory !== 'all') {
+            filtered = filtered.filter(reg => (reg as any).selfAssignedCategory === filterCategory);
+        }
+
+        setFilteredRegistrations(filtered);
+    }, [searchTerm, filterIconPlayer, filterPreviousLeague, filterCategory, registrations]);
 
     const checkAuth = () => {
         const token = localStorage.getItem('adminToken');
@@ -311,44 +361,91 @@ export default function EventParticipants() {
                     </div>
                 )}
 
-                {/* Search and View Toggle */}
-                <div className="mb-6 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-                    <div className="flex-1 w-full sm:max-w-md">
-                        <div className="relative">
-                            <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                            <input
-                                type="text"
-                                placeholder="Search by name, contact, or course..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                            />
-                        </div>
-                    </div>
+                {/* Search and Filters */}
+                <div className="mb-6 space-y-3">
+                    <div className="bg-white rounded-lg border border-gray-300 p-4 space-y-3">
+                        {/* Search and View Toggle */}
+                        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
+                            <div className="flex items-center gap-4 w-full">
+                                <div className="flex-1 w-full sm:max-w-2xl">
+                                    <div className="relative">
+                                        <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                        </svg>
+                                        <input
+                                            type="text"
+                                            placeholder="Search by name, contact, or course..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        />
+                                    </div>
+                                </div>
 
-                    <div className="flex items-center gap-2 bg-white rounded-lg border border-gray-300 p-1">
-                        <button
-                            onClick={() => setViewMode('card')}
-                            className={`p-2 rounded transition-colors ${viewMode === 'card' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-                                }`}
-                            title="Card View"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                            </svg>
-                        </button>
-                        <button
-                            onClick={() => setViewMode('table')}
-                            className={`p-2 rounded transition-colors ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-                                }`}
-                            title="Table View"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                            </svg>
-                        </button>
+                                {/* Showing Results */}
+                                <div className="text-sm text-gray-600 whitespace-nowrap hidden lg:block">
+                                    Showing <span className="font-semibold text-gray-900">{filteredRegistrations.length}</span> of <span className="font-semibold text-gray-900">{registrations.length}</span> participants
+                                </div>
+                            </div>
+
+                            {/* View Toggle - Right Corner */}
+                            <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-1 self-start sm:self-auto">
+                                <button
+                                    onClick={() => setViewMode('card')}
+                                    className={`p-2 rounded transition-colors ${viewMode === 'card' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                                        }`}
+                                    title="Card View"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                    </svg>
+                                </button>
+                                <button
+                                    onClick={() => setViewMode('table')}
+                                    className={`p-2 rounded transition-colors ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                                        }`}
+                                    title="Table View"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Filters */}
+                        <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+                            <select
+                                value={filterIconPlayer}
+                                onChange={(e) => setFilterIconPlayer(e.target.value)}
+                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            >
+                                <option value="all">Icon Player: All</option>
+                                <option value="yes">Icon Player: Yes</option>
+                                <option value="no">Icon Player: No</option>
+                            </select>
+
+                            <select
+                                value={filterPreviousLeague}
+                                onChange={(e) => setFilterPreviousLeague(e.target.value)}
+                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            >
+                                <option value="all">Previous League: All</option>
+                                <option value="yes">Previous League: Yes</option>
+                                <option value="no">Previous League: No</option>
+                            </select>
+
+                            <select
+                                value={filterCategory}
+                                onChange={(e) => setFilterCategory(e.target.value)}
+                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            >
+                                <option value="all">Category: All</option>
+                                <option value="Platinum">Platinum</option>
+                                <option value="Diamond">Diamond</option>
+                                <option value="Gold">Gold</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
@@ -387,8 +484,28 @@ export default function EventParticipants() {
                                                         className="w-10 h-10 rounded-full object-cover cursor-pointer hover:opacity-75 transition-opacity"
                                                     />
                                                 </td>
-                                                <td className="px-3 py-3 whitespace-nowrap">
+                                                <td className="px-3 py-3">
                                                     <div className="text-sm font-medium text-gray-900 uppercase">{registration.name}</div>
+                                                    {/* Additional Info Badges */}
+                                                    {((registration as any).iconPlayerRequest || registration.playedPreviousLeague || (registration as any).selfAssignedCategory) && (
+                                                        <div className="flex flex-wrap gap-1 mt-1">
+                                                            {(registration as any).iconPlayerRequest && (
+                                                                <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
+                                                                    Icon Player
+                                                                </span>
+                                                            )}
+                                                            {registration.playedPreviousLeague && (
+                                                                <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                                                                    Previous League
+                                                                </span>
+                                                            )}
+                                                            {(registration as any).selfAssignedCategory && (
+                                                                <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                                                    {(registration as any).selfAssignedCategory}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap">
                                                     <div className="flex items-center text-sm text-gray-900">
@@ -410,12 +527,15 @@ export default function EventParticipants() {
                                                     </div>
                                                 </td>
                                                 <td className="px-3 py-3">
-                                                    <div className="text-xs text-gray-600 space-y-0.5">
+                                                    <div className="text-xs text-gray-600 space-y-1">
                                                         {(registration as any).playerRole && (
-                                                            <div>{(registration as any).playerRole}</div>
+                                                            <div className="font-medium">{(registration as any).playerRole}</div>
                                                         )}
                                                         {(registration as any).playingStyle && (
                                                             <div>{(registration as any).playingStyle}</div>
+                                                        )}
+                                                        {registration.skillLevel && (
+                                                            <SkillLevelDisplay skillLevel={registration.skillLevel} />
                                                         )}
                                                     </div>
                                                 </td>
@@ -505,11 +625,15 @@ export default function EventParticipants() {
                                                         )}
 
                                                         {/* Role and Style */}
-                                                        {((registration as any).playerRole || (registration as any).playingStyle) && (
+                                                        {((registration as any).playerRole || (registration as any).playingStyle || registration.skillLevel) && (
                                                             <div className="mb-2 space-y-1">
                                                                 {(registration as any).playerRole && (
-                                                                    <div className="text-sm text-gray-600">
-                                                                        <span className="font-semibold">Role:</span> {(registration as any).playerRole}
+                                                                    <div className="text-sm text-gray-600 flex items-center gap-2">
+                                                                        <span className="font-semibold">Role:</span>
+                                                                        <span>{(registration as any).playerRole}</span>
+                                                                        {registration.skillLevel && (
+                                                                            <SkillLevelDisplay skillLevel={registration.skillLevel} />
+                                                                        )}
                                                                     </div>
                                                                 )}
                                                                 {(registration as any).playingStyle && (
@@ -521,6 +645,27 @@ export default function EventParticipants() {
                                                                     <div className="text-sm text-gray-600">
                                                                         <span className="font-semibold">Position:</span> {(registration as any).position}
                                                                     </div>
+                                                                )}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Additional Info Badges */}
+                                                        {((registration as any).iconPlayerRequest || registration.playedPreviousLeague || (registration as any).selfAssignedCategory) && (
+                                                            <div className="flex flex-wrap gap-2 mt-2">
+                                                                {(registration as any).iconPlayerRequest && (
+                                                                    <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
+                                                                        Icon Player
+                                                                    </span>
+                                                                )}
+                                                                {registration.playedPreviousLeague && (
+                                                                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+                                                                        Previous League
+                                                                    </span>
+                                                                )}
+                                                                {(registration as any).selfAssignedCategory && (
+                                                                    <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                                                        {(registration as any).selfAssignedCategory}
+                                                                    </span>
                                                                 )}
                                                             </div>
                                                         )}
