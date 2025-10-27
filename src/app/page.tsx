@@ -5,50 +5,6 @@ import Link from 'next/link';
 import { Card, Button } from '@/components/ui';
 import { ITournament } from '@/types/Tournament';
 
-// Mock data for previous events - in production, this would come from API
-const previousEvents = [
-  {
-    id: 1,
-    name: "Winter Cricket Championship 2023",
-    date: "2023-12-15",
-    participants: 48,
-    revenue: 24000,
-    image: "/api/placeholder/400/300",
-    type: "tournament",
-    status: "completed"
-  },
-  {
-    id: 2,
-    name: "Summer Football League 2023",
-    date: "2023-08-20",
-    participants: 64,
-    revenue: 32000,
-    image: "/api/placeholder/400/300",
-    type: "tournament",
-    status: "completed"
-  },
-  {
-    id: 3,
-    name: "Cultural Night 2023",
-    date: "2023-11-10",
-    participants: 120,
-    revenue: 15000,
-    image: "/api/placeholder/400/300",
-    type: "event",
-    status: "completed"
-  },
-  {
-    id: 4,
-    name: "Academic Quiz Competition",
-    date: "2023-09-25",
-    participants: 32,
-    revenue: 8000,
-    image: "/api/placeholder/400/300",
-    type: "competition",
-    status: "completed"
-  }
-];
-
 // HSL Statistics
 const hslStats = {
   totalEvents: 12,

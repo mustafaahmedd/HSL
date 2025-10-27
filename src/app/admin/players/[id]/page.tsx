@@ -233,7 +233,7 @@ export default function PlayerDetail() {
                             <div className="text-center">
                                 <img
                                     className="h-32 w-32 rounded-full object-cover mx-auto mb-4"
-                                    src={player.photoUrl || '/placeholder.jpg'}
+                                    src={player.photoUrl}
                                     alt={player.name}
                                 />
                                 <h3 className="text-xl font-semibold text-gray-900 mb-2">{player.name}</h3>

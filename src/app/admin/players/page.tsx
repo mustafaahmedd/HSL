@@ -258,7 +258,7 @@ export default function PlayersManagement() {
                                                 <div className="flex-shrink-0 h-10 w-10">
                                                     <img
                                                         className="h-10 w-10 rounded-full object-cover"
-                                                        src={player.photoUrl || '/placeholder.jpg'}
+                                                        src={player.photoUrl}
                                                         alt={player.name}
                                                     />
                                                 </div>

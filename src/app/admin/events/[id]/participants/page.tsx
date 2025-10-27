@@ -478,9 +478,9 @@ export default function EventParticipants() {
                                             <tr key={String(registration._id)} className="hover:bg-gray-50">
                                                 <td className="px-3 py-3 whitespace-nowrap">
                                                     <img
-                                                        src={registration.photoUrl || '/placeholder.jpg'}
+                                                        src={registration.photoUrl}
                                                         alt={registration.name}
-                                                        onClick={() => setSelectedImage(registration.photoUrl || '/placeholder.jpg')}
+                                                        onClick={() => setSelectedImage(registration.photoUrl)}
                                                         className="w-10 h-10 rounded-full object-cover cursor-pointer hover:opacity-75 transition-opacity"
                                                     />
                                                 </td>
@@ -518,8 +518,8 @@ export default function EventParticipants() {
                                                         {registration.courseEnrolled && (
                                                             <div>Course: {registration.courseEnrolled}</div>
                                                         )}
-                                                        {registration.darseNizamiYear && (
-                                                            <div>Year: {registration.darseNizamiYear}</div>
+                                                        {(registration.darseNizamiYear || registration.currentCourseYear) && (
+                                                            <div>Year: {registration.darseNizamiYear || registration.currentCourseYear}</div>
                                                         )}
                                                         {registration.timings && (
                                                             <div>Timings: {registration.timings}</div>
@@ -539,8 +539,15 @@ export default function EventParticipants() {
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="px-3 py-3 whitespace-nowrap">
-                                                    {getStatusBadge(registration.status)}
+                                                <td className="px-3 py-3 whitespace-nowrap align-top">
+                                                    <div className="flex flex-col items-start gap-1">
+                                                        {getStatusBadge(registration.status)}
+                                                        {registration.paymentMethod && (
+                                                            <span className="mt-1 block text-xs text-gray-500 font-normal rounded bg-gray-100 px-2 py-0.5">
+                                                                {registration.paymentMethod}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap">
                                                     <div className="text-sm text-gray-900">PKR {registration.amountPaid || 0}</div>
@@ -582,9 +589,9 @@ export default function EventParticipants() {
                                             {/* Profile Picture */}
                                             <div className="flex-shrink-0 self-center">
                                                 <img
-                                                    src={registration.photoUrl || '/placeholder.jpg'}
+                                                    src={registration.photoUrl}
                                                     alt={registration.name}
-                                                    onClick={() => setSelectedImage(registration.photoUrl || '/placeholder.jpg')}
+                                                    onClick={() => setSelectedImage(registration.photoUrl)}
                                                     className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-4 border-gray-200 cursor-pointer hover:opacity-75 transition-opacity"
                                                     onError={(e) => {
                                                         (e.target as HTMLImageElement).src = '/placeholder.jpg';
@@ -617,7 +624,7 @@ export default function EventParticipants() {
                                                         {(registration.courseEnrolled || registration.darseNizamiYear || registration.timings) && (
                                                             <div className="mb-2 text-sm text-gray-600">
                                                                 <span className="font-semibold">
-                                                                    {[registration.courseEnrolled, registration.darseNizamiYear, registration.timings]
+                                                                    {[registration.courseEnrolled, registration.darseNizamiYear, registration.currentCourseYear, registration.timings]
                                                                         .filter(Boolean)
                                                                         .join(' • ')}
                                                                 </span>
@@ -724,8 +731,9 @@ export default function EventParticipants() {
                                                     <div className="flex flex-col items-end gap-2">
                                                         {getPaymentStatusBadge(registration.paymentStatus || 'pending', (registration as any).isPaid || false)}
                                                         <div className="text-right">
-                                                            <p className="text-xs text-gray-600">Amount</p>
+                                                            {/* <p className="text-xs text-gray-600">Amount</p> */}
                                                             <p className="text-base md:text-lg font-bold text-gray-900">PKR {registration.amountPaid || 0}</p>
+                                                            <p className="text-xs text-gray-600">{registration.paymentMethod}</p>
                                                         </div>
                                                     </div>
                                                 </div>
