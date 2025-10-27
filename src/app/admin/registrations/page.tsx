@@ -185,32 +185,34 @@ export default function AdminRegistrations() {
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Filter by Event
                             </label>
-                            <Select
+                            <select
                                 value={selectedEvent}
                                 onChange={(e) => setSelectedEvent(e.target.value)}
-                                className="w-full" options={[]}                            >
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
                                 <option value="">All Events</option>
                                 {events.map((event) => (
                                     <option key={String(event._id)} value={String(event._id)}>
                                         {event.title}
                                     </option>
                                 ))}
-                            </Select>
+                            </select>
                         </div>
                         <div className="flex-1">
                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                 Filter by Status
                             </label>
-                            <Select
+                            <select
                                 value={selectedStatus}
                                 onChange={(e) => setSelectedStatus(e.target.value)}
-                                className="w-full" options={[]}                            >
+                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            >
                                 <option value="">All Statuses</option>
                                 <option value="pending">Pending</option>
                                 <option value="approved">Approved</option>
                                 <option value="rejected">Rejected</option>
                                 <option value="cancelled">Cancelled</option>
-                            </Select>
+                            </select>
                         </div>
                     </div>
                 </div>

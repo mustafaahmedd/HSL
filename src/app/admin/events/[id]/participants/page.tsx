@@ -363,7 +363,7 @@ export default function EventParticipants() {
 
                 {/* Search and Filters */}
                 <div className="mb-6 space-y-3">
-                    <div className="bg-white rounded-lg border border-gray-300 p-4 space-y-3">
+                    <div className="bg-white participant-dark-mode rounded-lg border border-gray-300 p-4 space-y-3">
                         {/* Search and View Toggle */}
                         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
                             <div className="flex items-center gap-4 w-full">
@@ -805,7 +805,7 @@ export default function EventParticipants() {
                 {/* Edit Modal */}
                 {editingRegistration && (
                     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                        <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+                        <div className="relative edit-registration-dark-mode top-10 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
                             <div className="mt-3">
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Registration Details</h3>
 
@@ -902,30 +902,30 @@ export default function EventParticipants() {
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                                 Status
                                             </label>
-                                            <Select
+                                            <select
                                                 value={editForm.status}
                                                 onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                                                options={[]}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             >
                                                 <option value="pending">Pending</option>
                                                 <option value="approved">Approved</option>
                                                 <option value="rejected">Rejected</option>
                                                 <option value="cancelled">Cancelled</option>
-                                            </Select>
+                                            </select>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                                 Payment Status
                                             </label>
-                                            <Select
+                                            <select
                                                 value={editForm.paymentStatus}
                                                 onChange={(e) => setEditForm({ ...editForm, paymentStatus: e.target.value })}
-                                                options={[]}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             >
                                                 <option value="pending">Pending</option>
                                                 <option value="paid">Paid</option>
                                                 <option value="refunded">Refunded</option>
-                                            </Select>
+                                            </select>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">

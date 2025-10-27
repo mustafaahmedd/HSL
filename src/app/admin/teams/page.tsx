@@ -257,6 +257,7 @@ export default function AdminTeams() {
                                     value={filters.search}
                                     onChange={(e) => setFilters({ ...filters, search: e.target.value })}
                                     placeholder="Search teams..."
+                                    className='text-gray-900'
                                 />
                             </div>
                         </div>

@@ -191,7 +191,7 @@ export default function PlayersManagement() {
 
                 {/* Filters */}
                 <Card className="mb-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="edit-registration-dark-mode grid grid-cols-1 md:grid-cols-3 gap-4">
                         <Input
                             label="Search Players"
                             placeholder="Search by name or contact..."

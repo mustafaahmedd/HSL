@@ -170,7 +170,7 @@ export default function CreateTeam() {
                 {/* Form */}
                 <Card>
                     <div className="p-6">
-                        <form onSubmit={handleSubmit} className="space-y-6">
+                        <form onSubmit={handleSubmit} className="team-creation-dark-mode space-y-6">
                             {/* Event Selection */}
                             <div className="border-b pb-4">
                                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Event Information</h3>

@@ -314,7 +314,7 @@ export default function AdminDashboard() {
           </div>
 
           {showTournamentForm && (
-            <form onSubmit={handleCreateTournament} className="mb-6 p-6 bg-gray-50 rounded-lg space-y-6">
+            <form onSubmit={handleCreateTournament} className="tournament-creation-dark-mode mb-6 p-6 bg-gray-50 rounded-lg space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   label="Event Name"

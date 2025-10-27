@@ -155,8 +155,16 @@ export default function EventDetail() {
                                     </div>
 
                                     <div>
-                                        <h4 className="text-lg font-semibold text-purple-300">Location</h4>
-                                        <p className="text-gray-200">{event.venue}</p>
+                                        <h4 className="text-lg font-semibold text-purple-300"> ---- </h4>
+                                        <p className="text-gray-200">
+                                            <strong>Venue:</strong> {event.venue}
+                                        </p>
+                                        <p className="text-gray-200">
+                                            <strong>Organizer:</strong> {event.organizer}
+                                        </p>
+                                        <p className="text-gray-200">
+                                            <strong>Contact No:</strong> {event.contactInfo.phone}
+                                        </p>
                                     </div>
 
                                     {/* <div> */}
@@ -271,7 +279,7 @@ export default function EventDetail() {
                         </Card>
 
                         {/* Contact Information */}
-                        <Card className="bg-white/10 backdrop-blur-sm border-white/20">
+                        {/* <Card className="bg-white/10 backdrop-blur-sm border-white/20">
                             <div className="p-4">
                                 <h3 className="text-xl font-bold text-white mb-4">Contact Info</h3>
                                 <div className="space-y-4">
@@ -292,7 +300,7 @@ export default function EventDetail() {
                                     )}
                                 </div>
                             </div>
-                        </Card>
+                        </Card> */}
 
                         {/* Event Stats */}
                         <Card className="bg-white/10 backdrop-blur-sm border-white/20">
@@ -300,7 +308,11 @@ export default function EventDetail() {
                                 <h3 className="text-xl font-bold text-white mb-4">Event Stats</h3>
                                 <div className="space-y-4">
                                     <div className="flex justify-between">
-                                        <span className="text-gray-300">Participants:</span>
+                                        <span className="text-gray-300">Max Players:</span>
+                                        <span className="text-white font-semibold">{event.maxParticipants}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-300">Registered Participants:</span>
                                         <span className="text-white font-semibold">{event.totalParticipants}</span>
                                     </div>
                                     {/* <div className="flex justify-between">
