@@ -105,9 +105,10 @@ export default function EventParticipants() {
     const [searchTerm, setSearchTerm] = useState('');
 
     // Filter states
-    const [filterIconPlayer, setFilterIconPlayer] = useState<string>('all'); // all, yes, no
-    const [filterPreviousLeague, setFilterPreviousLeague] = useState<string>('all'); // all, yes, no
+    const [filterIconPlayer, setFilterIconPlayer] = useState<string>('all');
+    const [filterPreviousLeague, setFilterPreviousLeague] = useState<string>('all');
     const [filterCategory, setFilterCategory] = useState<string>('all');
+    const [filterPlayBoth, setFilterPlayBoth] = useState<string>('all'); // all, yes, no
 
     // Image modal state
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -117,6 +118,9 @@ export default function EventParticipants() {
     const [selectedRegistration, setSelectedRegistration] = useState<IRegistration | null>(null);
     const [paymentAmount, setPaymentAmount] = useState('');
     const [isPaid, setIsPaid] = useState(false);
+
+    // Derived counts
+    const totalPaidRegistrants = registrations.filter(reg => (reg.isPaid === true) || (reg.paymentStatus === 'paid')).length;
 
     useEffect(() => {
         checkAuth();
@@ -145,7 +149,7 @@ export default function EventParticipants() {
         // Icon player filter
         if (filterIconPlayer !== 'all') {
             filtered = filtered.filter(reg => {
-                const isIconPlayer = (reg as any).iconPlayerRequest || false;
+                const isIconPlayer = reg.iconPlayerRequest || false;
                 return filterIconPlayer === 'yes' ? isIconPlayer : !isIconPlayer;
             });
         }
@@ -158,13 +162,21 @@ export default function EventParticipants() {
             });
         }
 
+        // Play Both filter
+        if (filterPlayBoth !== 'all') {
+            filtered = filtered.filter(reg => {
+                const playBoth = reg.playBothTournaments || false;
+                return filterPlayBoth === 'yes' ? playBoth : !playBoth;
+            });
+        }
+
         // Category filter
         if (filterCategory !== 'all') {
-            filtered = filtered.filter(reg => (reg as any).selfAssignedCategory === filterCategory);
+            filtered = filtered.filter(reg => reg.selfAssignedCategory === filterCategory);
         }
 
         setFilteredRegistrations(filtered);
-    }, [searchTerm, filterIconPlayer, filterPreviousLeague, filterCategory, registrations]);
+    }, [searchTerm, filterIconPlayer, filterPreviousLeague, filterPlayBoth, filterCategory, registrations]);
 
     const checkAuth = () => {
         const token = localStorage.getItem('adminToken');
@@ -247,19 +259,20 @@ export default function EventParticipants() {
             status: registration.status || 'pending',
             paymentStatus: registration.paymentStatus || 'pending',
             amountPaid: registration.amountPaid || 0,
-            adminNotes: (registration as any).adminNotes || '',
+            adminNotes: registration.adminNotes || '',
             photoUrl: registration.photoUrl || '',
             isHikmahStudent: registration.isHikmahStudent || false,
             timings: registration.timings || '',
-            playerRole: (registration as any).playerRole || '',
-            playingStyle: (registration as any).playingStyle || '',
-            position: (registration as any).position || '',
+            playerRole: registration.playerRole || '',
+            playingStyle: registration.playingStyle || '',
+            position: registration.position || '',
+            playBothTournaments: registration.playBothTournaments || false,
         });
     };
 
     const handleMarkPayment = (registration: IRegistration) => {
         setSelectedRegistration(registration);
-        setIsPaid((registration as any).isPaid || false);
+        setIsPaid(registration.isPaid || false);
         setPaymentAmount((registration.amountPaid || 0).toString());
         setPaymentModalOpen(true);
     };
@@ -340,7 +353,7 @@ export default function EventParticipants() {
                 {event && (
                     <div className="mb-6 bg-white rounded-xl shadow-lg p-4 md:p-6 border border-gray-200">
                         <h1 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">{event.title}</h1>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 text-sm">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4 text-sm">
                             <div className="bg-blue-50 rounded-lg p-2 md:p-3">
                                 <p className="text-gray-600 text-xs uppercase font-semibold mb-1">Type</p>
                                 <p className="text-gray-900 font-medium text-sm md:text-base">{event.eventType}</p>
@@ -356,6 +369,10 @@ export default function EventParticipants() {
                             <div className="bg-orange-50 rounded-lg p-2 md:p-3">
                                 <p className="text-gray-600 text-xs uppercase font-semibold mb-1">Participants</p>
                                 <p className="text-gray-900 font-medium text-xl md:text-2xl">{registrations.length}</p>
+                            </div>
+                            <div className="bg-emerald-50 rounded-lg p-2 md:p-3">
+                                <p className="text-gray-600 text-xs uppercase font-semibold mb-1">Paid</p>
+                                <p className="text-gray-900 font-medium text-xl md:text-2xl">{totalPaidRegistrants}</p>
                             </div>
                         </div>
                     </div>
@@ -436,6 +453,16 @@ export default function EventParticipants() {
                             </select>
 
                             <select
+                                value={filterPlayBoth}
+                                onChange={(e) => setFilterPlayBoth(e.target.value)}
+                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                            >
+                                <option value="all">Play Both: All</option>
+                                <option value="yes">Play Both: Yes</option>
+                                <option value="no">Play Both: No</option>
+                            </select>
+
+                            <select
                                 value={filterCategory}
                                 onChange={(e) => setFilterCategory(e.target.value)}
                                 className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
@@ -487,9 +514,9 @@ export default function EventParticipants() {
                                                 <td className="px-3 py-3">
                                                     <div className="text-sm font-medium text-gray-900 uppercase">{registration.name}</div>
                                                     {/* Additional Info Badges */}
-                                                    {((registration as any).iconPlayerRequest || registration.playedPreviousLeague || (registration as any).selfAssignedCategory) && (
+                                                    {(registration.iconPlayerRequest || registration.playedPreviousLeague || registration.selfAssignedCategory || registration.playBothTournaments) && (
                                                         <div className="flex flex-wrap gap-1 mt-1">
-                                                            {(registration as any).iconPlayerRequest && (
+                                                            {registration.iconPlayerRequest && (
                                                                 <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
                                                                     Icon Player
                                                                 </span>
@@ -499,9 +526,14 @@ export default function EventParticipants() {
                                                                     Previous League
                                                                 </span>
                                                             )}
-                                                            {(registration as any).selfAssignedCategory && (
+                                                            {registration.selfAssignedCategory && (
                                                                 <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                                                    {(registration as any).selfAssignedCategory}
+                                                                    {registration.selfAssignedCategory}
+                                                                </span>
+                                                            )}
+                                                            {registration.playBothTournaments && (
+                                                                <span className="px-2 py-0.5 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
+                                                                    Play Both
                                                                 </span>
                                                             )}
                                                         </div>
@@ -528,11 +560,11 @@ export default function EventParticipants() {
                                                 </td>
                                                 <td className="px-3 py-3">
                                                     <div className="text-xs text-gray-600 space-y-1">
-                                                        {(registration as any).playerRole && (
-                                                            <div className="font-medium">{(registration as any).playerRole}</div>
+                                                        {registration.playerRole && (
+                                                            <div className="font-medium">{registration.playerRole}</div>
                                                         )}
-                                                        {(registration as any).playingStyle && (
-                                                            <div>{(registration as any).playingStyle}</div>
+                                                        {registration.playingStyle && (
+                                                            <div>{registration.playingStyle}</div>
                                                         )}
                                                         {registration.skillLevel && (
                                                             <SkillLevelDisplay skillLevel={registration.skillLevel} />
@@ -558,7 +590,7 @@ export default function EventParticipants() {
                                                             Edit
                                                         </Button>
                                                         <Button size="sm" variant={registration.status === 'pending' ? 'secondary' : 'primary'} onClick={() => handleMarkPayment(registration)}>
-                                                            {(registration as any).isPaid ? 'Paid' : 'Pay'}
+                                                            {registration.isPaid ? 'Paid' : 'Pay'}
                                                         </Button>
                                                     </div>
                                                 </td>
@@ -632,34 +664,34 @@ export default function EventParticipants() {
                                                         )}
 
                                                         {/* Role and Style */}
-                                                        {((registration as any).playerRole || (registration as any).playingStyle || registration.skillLevel) && (
+                                                        {(registration.playerRole || registration.playingStyle || registration.skillLevel) && (
                                                             <div className="mb-2 space-y-1">
-                                                                {(registration as any).playerRole && (
+                                                                {registration.playerRole && (
                                                                     <div className="text-sm text-gray-600 flex items-center gap-2">
                                                                         <span className="font-semibold">Role:</span>
-                                                                        <span>{(registration as any).playerRole}</span>
+                                                                        <span>{registration.playerRole}</span>
                                                                         {registration.skillLevel && (
                                                                             <SkillLevelDisplay skillLevel={registration.skillLevel} />
                                                                         )}
                                                                     </div>
                                                                 )}
-                                                                {(registration as any).playingStyle && (
+                                                                {registration.playingStyle && (
                                                                     <div className="text-sm text-gray-600">
-                                                                        <span className="font-semibold">Style:</span> {(registration as any).playingStyle}
+                                                                        <span className="font-semibold">Style:</span> {registration.playingStyle}
                                                                     </div>
                                                                 )}
-                                                                {(registration as any).position && (
+                                                                {registration.position && (
                                                                     <div className="text-sm text-gray-600">
-                                                                        <span className="font-semibold">Position:</span> {(registration as any).position}
+                                                                        <span className="font-semibold">Position:</span> {registration.position}
                                                                     </div>
                                                                 )}
                                                             </div>
                                                         )}
 
                                                         {/* Additional Info Badges */}
-                                                        {((registration as any).iconPlayerRequest || registration.playedPreviousLeague || (registration as any).selfAssignedCategory) && (
+                                                        {(registration.iconPlayerRequest || registration.playedPreviousLeague || registration.selfAssignedCategory || registration.playBothTournaments) && (
                                                             <div className="flex flex-wrap gap-2 mt-2">
-                                                                {(registration as any).iconPlayerRequest && (
+                                                                {registration.iconPlayerRequest && (
                                                                     <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
                                                                         Icon Player
                                                                     </span>
@@ -669,9 +701,14 @@ export default function EventParticipants() {
                                                                         Previous League
                                                                     </span>
                                                                 )}
-                                                                {(registration as any).selfAssignedCategory && (
+                                                                {registration.selfAssignedCategory && (
                                                                     <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                                                        {(registration as any).selfAssignedCategory}
+                                                                        {registration.selfAssignedCategory}
+                                                                    </span>
+                                                                )}
+                                                                {registration.playBothTournaments && (
+                                                                    <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
+                                                                        Play Both
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -703,11 +740,11 @@ export default function EventParticipants() {
                                                                 Edit Details
                                                             </Button>
                                                             <Button
-                                                                variant={(registration as any).isPaid ? "secondary" : "primary"}
+                                                                variant={registration.isPaid ? "secondary" : "primary"}
                                                                 size="sm"
                                                                 onClick={() => handleMarkPayment(registration)}
                                                             >
-                                                                {(registration as any).isPaid ? 'Edit Payment' : 'Mark Paid'}
+                                                                {registration.isPaid ? 'Edit Payment' : 'Mark Paid'}
                                                             </Button>
                                                             {registration.status === 'pending' && (
                                                                 <Button
@@ -729,7 +766,7 @@ export default function EventParticipants() {
 
                                                     {/* Payment Status */}
                                                     <div className="flex flex-col items-end gap-2">
-                                                        {getPaymentStatusBadge(registration.paymentStatus || 'pending', (registration as any).isPaid || false)}
+                                                        {getPaymentStatusBadge(registration.paymentStatus || 'pending', registration.isPaid || false)}
                                                         <div className="text-right">
                                                             {/* <p className="text-xs text-gray-600">Amount</p> */}
                                                             <p className="text-base md:text-lg font-bold text-gray-900">PKR {registration.amountPaid || 0}</p>
@@ -936,6 +973,30 @@ export default function EventParticipants() {
                                                 value={editForm.amountPaid || 0}
                                                 onChange={(e) => setEditForm({ ...editForm, amountPaid: parseFloat(e.target.value) })}
                                             />
+                                        </div>
+                                        {editForm.position && (
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Position
+                                                </label>
+                                                <Input
+                                                    value={editForm.position || ''}
+                                                    onChange={(e) => setEditForm({ ...editForm, position: e.target.value })}
+                                                />
+                                            </div>
+                                        )}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Play Both
+                                            </label>
+                                            <select
+                                                value={editForm.playBothTournaments ? 'yes' : 'no'}
+                                                onChange={(e) => setEditForm({ ...editForm, playBothTournaments: e.target.value === 'yes' })}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="yes">Yes</option>
+                                                <option value="no">No</option>
+                                            </select>
                                         </div>
                                     </div>
                                     <div>
