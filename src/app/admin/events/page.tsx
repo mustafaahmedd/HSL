@@ -116,34 +116,38 @@ export default function AdminEvents() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="min-h-screen bg-gray-50 overflow-x-hidden">
+            <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-0 py-6 lg:py-8">
                 <div className="mb-6">
-                    <div className="text-center mb-4">
+                    <div className="text-center lg:text-left mb-4 px-2">
                         <h1 className="text-3xl font-bold text-gray-900">Events Management</h1>
                         <p className="text-gray-600">Manage all events and activities</p>
                     </div>
-                    <div className="flex flex-row justify-center gap-3 w-full max-w-xs mx-auto">
-                        <Button
-                            variant="secondary"
-                            className="min-w-0 px-5 py-2 text-base text-xs font-medium flex-1"
-                            onClick={() => router.push('/admin')}
-                        >
-                            Back to Dashboard
-                        </Button>
-                        <Button
-                            variant="primary"
-                            className="min-w-0 px-5 py-2 text-base text-xs font-medium flex-1"
-                            onClick={() => router.push('/admin/events/create')}
-                        >
-                            Create New Event
-                        </Button>
+                    <div className="flex flex-col sm:flex-row sm:justify-between gap-3 px-2">
+                        <div className="flex justify-center sm:justify-start">
+                            <Button
+                                variant="secondary"
+                                className="px-5 py-2 text-sm"
+                                onClick={() => router.push('/admin')}
+                            >
+                                Back to Dashboard
+                            </Button>
+                        </div>
+                        <div className="flex justify-center sm:justify-end">
+                            <Button
+                                variant="primary"
+                                className="px-5 py-2 text-sm"
+                                onClick={() => router.push('/admin/events/create')}
+                            >
+                                Create New Event
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
 
                 {/* Events List */}
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                     {events.map((event) => (
                         <Card key={event._id?.toString()} className="hover:shadow-lg transition-shadow">
                             <div className="p-6">

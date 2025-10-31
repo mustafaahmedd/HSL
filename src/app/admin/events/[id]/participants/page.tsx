@@ -573,7 +573,7 @@ export default function EventParticipants() {
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap align-top">
                                                     <div className="flex flex-col items-start gap-1">
-                                                        {getStatusBadge(registration.status)}
+                                                        {getPaymentStatusBadge(registration.paymentStatus || 'pending', registration.isPaid || false)}
                                                         {registration.paymentMethod && (
                                                             <span className="mt-1 block text-xs text-gray-500 font-normal rounded bg-gray-100 px-2 py-0.5">
                                                                 {registration.paymentMethod}

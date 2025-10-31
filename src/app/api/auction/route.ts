@@ -6,14 +6,14 @@ import Player from '@/models/Player';
 import Team from '@/models/Team';
 import { isAuthenticated } from '@/lib/auth';
 
+await dbConnect(); // Connect to MongoDB
+
 export async function GET(request: NextRequest) {
   try {
     const isAuth = await isAuthenticated(request);
     if (!isAuth) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ success: false, error: 'Unauthorized User to access auction route' }, { status: 401 });
     }
-
-    await dbConnect();
 
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
     if (status) query.status = status;
 
     const auctions = await Auction.find(query)
-      .populate('eventId', 'name description')
+      .populate('eventId', 'title description')
       .populate('players', 'name type category status')
       .populate('teams', 'name owner totalBudget pointsSpent pointsLeft')
       .sort({ auctionDate: -1 });
@@ -48,8 +48,6 @@ export async function POST(request: NextRequest) {
     if (!isAuth) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
-
-    await dbConnect();
 
     const body = await request.json();
     const {
@@ -136,8 +134,6 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    await dbConnect();
-
     const body = await request.json();
     const { auctionId, updates } = body;
 
@@ -184,8 +180,6 @@ export async function DELETE(request: NextRequest) {
     if (!isAuth) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
-
-    await dbConnect();
 
     const { searchParams } = new URL(request.url);
     const auctionId = searchParams.get('auctionId');

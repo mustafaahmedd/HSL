@@ -125,7 +125,7 @@ export default function CreateTeam() {
             const data = await response.json();
 
             if (data.success) {
-                alert('Team created successfully!');
+                alert('Team created successfully!'); //change this alert to Toast
                 router.push('/admin/teams');
             } else {
                 alert('Failed to create team: ' + data.error);

@@ -11,72 +11,37 @@ import { saveFile } from '@/lib/upload';
 export async function POST(request: NextRequest) {
   try {
     await dbConnect();
-
     const formData = await request.formData();
+
+    const rawBody = JSON.parse(formData.get('data') as string);
+    const photoFile = formData.get('photo') as File;
     
     // Extract all form fields
-    const formFields = {
-      // Event related
-      eventId: formData.get('eventId') as string,
-      
-      // Personal details (for Player collection)
-      name: formData.get('name') as string,
-      contactNo: formData.get('contactNo') as string,
-      isHikmahStudent: formData.get('isHikmahStudent') === 'true',
-      courseEnrolled: formData.get('courseEnrolled') as string || undefined,
-      darseNizamiYear: formData.get('darseNizamiYear') as string || undefined,
-      currentCourseYear: formData.get('currentCourseYear') as string || undefined,
-      timings: formData.get('timings') as string,
-      
-      // Sport specific details (for Registration collection)
-      playedPreviousLeague: formData.get('playedPreviousLeague') === 'true' || formData.get('playedPreviousLeague') === 'yes',
-      playBothTournaments: formData.get('playBothTournaments') === 'true' || formData.get('playBothTournaments') === 'yes',
-      skillLevel: formData.get('skillLevel') as string,
-      iconPlayerRequest: formData.get('iconPlayerRequest') === 'true' || formData.get('iconPlayerRequest') === 'yes',
-      selfAssignedCategory: formData.get('selfAssignedCategory') as string,
-      
-      // Cricket specific - renamed from 'type' to 'playerRole'
-      playerRole: formData.get('playerRole') as string || undefined,
-      playingStyle: formData.get('playingStyle') as string || undefined,
-      
-      // Other sports
-      position: formData.get('position') as string || undefined,
-      experience: formData.get('experience') as string || undefined,
-      subject: formData.get('subject') as string || undefined,
-      level: formData.get('level') as string || undefined,
-      category: formData.get('category') as string || undefined,
-      
-      // Additional fields
-      teamName: formData.get('teamName') as string || undefined,
-      specialRequirements: formData.get('specialRequirements') as string || undefined,
-      teamMembers: formData.get('teamMembers') as string || undefined,
-      department: formData.get('department') as string || undefined,
-      phone: formData.get('phone') as string || undefined,
-      
-      // Registration details
-      paymentMethod: formData.get('paymentMethod') as string,
-      assurance: formData.get('assurance') === 'true',
+    const body = {
+      ...rawBody,
+      playedPreviousLeague: rawBody.playedPreviousLeague === 'true' || rawBody.playedPreviousLeague === 'yes',
+      playBothTournaments: rawBody.playBothTournaments === 'true' || rawBody.playBothTournaments === 'yes',
+      iconPlayerRequest: rawBody.iconPlayerRequest === 'true' || rawBody.iconPlayerRequest === 'yes',
+      assurance: rawBody.assurance === 'true',
     };
 
     // Check if event exists first
-    const event = await Event.findById(formFields.eventId);
+    const event = await Event.findById(body.eventId);
     if (!event) {
       return NextResponse.json(
         { error: 'Event not found' },
         { status: 404 }
       );
     }
-
-    // Validate required fields (make validation more flexible based on sport type)
-    const requiredFields = ['eventId', 'name', 'contactNo', 'skillLevel', 'paymentMethod'];
+    const requiredFields = ['eventId', 'name', 'contactNo', 'skillLevel', 'paymentMethod', 'photo'];
     
-    // Add sport-specific required fields
     if (event.sport === 'cricket') {
       requiredFields.push('selfAssignedCategory');
     }
     
     for (const field of requiredFields) {
-      if (!formFields[field as keyof typeof formFields]) {
+      // if (!formFields[field as keyof typeof formFields]) {
+      if (!body[field as keyof typeof body]) {
         return NextResponse.json(
           { error: `${field} is required` },
           { status: 400 }
@@ -86,7 +51,7 @@ export async function POST(request: NextRequest) {
 
     // Handle photo upload first
     let photoUrl = '/placeholder.jpg';
-    const photoFile = formData.get('photo') as File;
+    // const photoFile = formData.get('photo') as File;
     if (photoFile && photoFile.size > 0) {
       try {
         const uploadedFile = await saveFile(photoFile, 'players');
@@ -101,29 +66,15 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Find or create player based on name + contactNo
     let player = await Player.findOne({
-      name: formFields.name,
-      contactNo: formFields.contactNo
+      name: body.name,
+      contactNo: body.contactNo
     });
 
     if (!player) {
-      // Create new player with personal details
       const playerData: Partial<IPlayer> = {
-        name: formFields.name,
-        contactNo: formFields.contactNo,
-        isHikmahStudent: formFields.isHikmahStudent,
-        courseEnrolled: formFields.courseEnrolled,
-        darseNizamiYear: formFields.darseNizamiYear,
-        currentCourseYear: formFields.currentCourseYear,
-        timings: formFields.timings,
+        ...body,
         photoUrl: photoUrl,
-        
-        // Sport-specific fields with defaults to prevent validation errors
-        playBothTournaments: formFields.playBothTournaments ?? false,
-        skillLevel: formFields.skillLevel ?? 'Beginner',
-        iconPlayerRequest: formFields.iconPlayerRequest ?? false,
-        selfAssignedCategory: formFields.selfAssignedCategory ?? 'Bronze',
       };
-
       player = await Player.create(playerData);
     } else {
       // Update existing player's photo if provided
@@ -135,51 +86,19 @@ export async function POST(request: NextRequest) {
 
     // Step 2: Create registration with event-specific data
     const registrationData: Partial<IRegistration> = {
-      eventId: new Types.ObjectId(formFields.eventId),
+      eventId: new Types.ObjectId(body.eventId),
       eventName: event.title,
       playerId: player._id,
-      
-      // Personal Information (duplicated for easy access)
-      name: formFields.name,
-      contactNo: formFields.contactNo,
-      isHikmahStudent: formFields.isHikmahStudent,
-      courseEnrolled: formFields.courseEnrolled,
-      darseNizamiYear: formFields.darseNizamiYear,
-      currentCourseYear: formFields.currentCourseYear,
-      timings: formFields.timings,
-      
-      // Sport-specific details
-      playedPreviousLeague: formFields.playedPreviousLeague,
-      playBothTournaments: formFields.playBothTournaments,
-      skillLevel: formFields.skillLevel,
-      iconPlayerRequest: formFields.iconPlayerRequest,
-      selfAssignedCategory: formFields.selfAssignedCategory,
-      
-      // Cricket specific - renamed from 'type' to 'playerRole'
-      playerRole: formFields.playerRole,
-      playingStyle: formFields.playingStyle,
-      
-      // Other sports
-      position: formFields.position,
-      experience: formFields.experience,
-      level: formFields.level,
-      
-      // Additional fields
-      teamName: formFields.teamName,
-      specialRequirements: formFields.specialRequirements,
-      
-      // Registration details
-      paymentMethod: formFields.paymentMethod,
-      assurance: formFields.assurance,
+      ...body,
+      photoUrl: photoUrl,
       status: 'pending',
     };
-    registrationData.photoUrl = photoUrl;
 
     const registration = await Registration.create(registrationData);
 
     // Step 3: Increment event participant count
     await Event.findByIdAndUpdate(
-      formFields.eventId,
+      body.eventId,
       { $inc: { totalParticipants: 1 } },
       { new: true }
     );
@@ -190,7 +109,7 @@ export async function POST(request: NextRequest) {
       registration: {
         id: registration._id,
         playerId: player._id,
-        eventId: formFields.eventId,
+        eventId: body.eventId,
         status: registration.status
       }
     });

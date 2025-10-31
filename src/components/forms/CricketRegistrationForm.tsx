@@ -150,19 +150,20 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
 
         try {
             const formDataToSend = new FormData();
-
-            // Add event ID
             formDataToSend.append('eventId', eventId);
 
-            // Add all form fields
-            Object.entries(formData).forEach(([key, value]) => {
-                formDataToSend.append(key, value.toString());
-            });
+            // Object.entries(formData).forEach(([key, value]) => {
+            //     formDataToSend.append(key, value.toString());
+            // });
 
-            // Add photo
             if (photo) {
                 formDataToSend.append('photo', photo);
             }
+
+            formDataToSend.append('data', JSON.stringify({
+                eventId,
+                ...formData  // Spread all your form fields
+            }));
 
             const response = await fetch('/api/register', {
                 method: 'POST',
@@ -176,9 +177,9 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
             } else {
                 alert('Registration failed: ' + data.error); // isko toast notification main convert karna hai ...
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Registration error:', error);
-            alert('Registration failed. Please try again.');
+            alert('Registration failed. Please try again: ' + error.message);
         } finally {
             setLoading(false);
         }

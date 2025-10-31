@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Team from '@/models/Team';
 import Event from '@/models/Event';
-import Registration from '@/models/Registration';
 import { isAuthenticated } from '@/lib/auth';
 
 // GET /api/teams - Get all teams with filters (admin only)
@@ -10,7 +9,7 @@ export async function GET(request: NextRequest) {
   try {
     const isAuth = await isAuthenticated(request);
     if (!isAuth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized to access teams' }, { status: 401 });
     }
 
     await dbConnect();
@@ -58,7 +57,7 @@ export async function POST(request: NextRequest) {
   try {
     const isAuth = await isAuthenticated(request);
     if (!isAuth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized to create teams' }, { status: 401 });
     }
 
     await dbConnect();
@@ -146,7 +145,7 @@ export async function PUT(request: NextRequest) {
   try {
     const isAuth = await isAuthenticated(request);
     if (!isAuth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized to update teams' }, { status: 401 });
     }
 
     await dbConnect();
@@ -193,7 +192,7 @@ export async function DELETE(request: NextRequest) {
   try {
     const isAuth = await isAuthenticated(request);
     if (!isAuth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized to delete teams' }, { status: 401 });
     }
 
     await dbConnect();

@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new event (admin only)
 export async function POST(request: NextRequest) {
   if (!await isAuthenticated(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized to create events' }, { status: 401 });
   }
 
   try {
@@ -139,7 +139,7 @@ export async function POST(request: NextRequest) {
 // PUT - Update event (admin only)
 export async function PUT(request: NextRequest) {
   if (!await isAuthenticated(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized to update events' }, { status: 401 });
   }
 
   try {
@@ -186,7 +186,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete event (admin only)
 export async function DELETE(request: NextRequest) {
   if (!await isAuthenticated(request)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    return NextResponse.json({ error: 'Unauthorized to delete events' }, { status: 401 });
   }
 
   try {

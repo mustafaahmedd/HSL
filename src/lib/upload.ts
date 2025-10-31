@@ -75,11 +75,8 @@ export async function uploadToCloudinary(
   // Convert buffer to base64
   const base64String = buffer.toString('base64');
   const dataUri = `data:${file.type};base64,${base64String}`;
-
-  // Generate filename
   const filename = generateFilename(file.name, category);
 
-  // Build folder path: {baseFolder}/{category}
   const baseFolder = config.baseFolder || DEFAULT_CONFIG.baseFolder;
   const folderPath = `${baseFolder}/${category}`;
 

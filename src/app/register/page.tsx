@@ -70,9 +70,9 @@ function RegisterForm() {
       } else {
         alert(data.error || 'Registration failed');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Registration error:', error);
-      alert('Failed to submit registration');
+      alert('Failed to submit registration: ' + error.message);
     } finally {
       setLoading(false);
     }

@@ -182,7 +182,8 @@ body {
 }
 
 .registration-dark-mode input,
-select {
+select,
+span {
   color: #0a0a0a;
 }
 

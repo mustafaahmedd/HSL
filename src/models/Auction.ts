@@ -62,7 +62,7 @@ const AuctionSchema = new Schema<IAuction>(
     },
     players: [{
       type: Schema.Types.ObjectId,
-      ref: 'Player',
+      ref: 'Registration',
     }],
     teams: [{
       type: Schema.Types.ObjectId,

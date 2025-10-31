@@ -81,6 +81,9 @@ const TeamSchema = new Schema<ITeam>(
     pointsLeft: {
       type: Number,
     },
+    maxPlayers: {
+      type: Number,
+    },
     // Players array - schema depends on eventType
     players: {
       type: Schema.Types.Mixed,

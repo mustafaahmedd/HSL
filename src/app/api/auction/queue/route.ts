@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
-import Player from '@/models/Player';
+import Registration from '@/models/Registration';
 import { isAuthenticated } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
@@ -21,20 +21,20 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Find all unsold players in the specified category
-    const players = await Player.find({
-      category,
+    // Find all unsold registrations in the specified category
+    const registrations = await Registration.find({
+      selfAssignedCategory: category,
       status: 'available'
     });
 
     // Randomize the order
-    const shuffledPlayers = players.sort(() => Math.random() - 0.5);
+    const shuffledRegistrations = registrations.sort(() => Math.random() - 0.5);
 
     return NextResponse.json({
       success: true,
       category,
-      players: shuffledPlayers,
-      total: shuffledPlayers.length
+      players: shuffledRegistrations,
+      total: shuffledRegistrations.length
     });
   } catch (error) {
     console.error('Get queue error:', error);

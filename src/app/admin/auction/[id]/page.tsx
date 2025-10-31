@@ -3,10 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { Card, Button, Input, Select } from '@/components/ui';
+import { Card, Button, Input, Select, NumberInput } from '@/components/ui';
 import { IAuction, IBid, IAuctionSession } from '@/types/Auction';
 import { IPlayer } from '@/types/Player';
 import { ITeam } from '@/types/Team';
+import { IRegistration } from '@/types/Registration';
 
 export default function AuctionManagement() {
     const router = useRouter();
@@ -24,18 +25,28 @@ export default function AuctionManagement() {
 
     // Available data for selection
     const [availablePlayers, setAvailablePlayers] = useState<IPlayer[]>([]);
+    const [eventRegistrations, setEventRegistrations] = useState<IRegistration[]>([]);
     const [availableTeams, setAvailableTeams] = useState<ITeam[]>([]);
 
     // Forms state
     const [showPlayerSelection, setShowPlayerSelection] = useState(false);
     const [showTeamSelection, setShowTeamSelection] = useState(false);
     const [selectedPlayers, setSelectedPlayers] = useState<string[]>([]);
+    const [selectedRegistrationIds, setSelectedRegistrationIds] = useState<string[]>([]);
     const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
 
     // Live auction state
     const [currentPlayer, setCurrentPlayer] = useState<IPlayer | null>(null);
     const [timeRemaining, setTimeRemaining] = useState(0);
     const [currentBid, setCurrentBid] = useState<IBid | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<string>('');
+    const [categoryLocked, setCategoryLocked] = useState(false);
+    const [queuedPlayers, setQueuedPlayers] = useState<IPlayer[]>([]);
+
+    // Moderator edit state
+    const [showModeratorEdit, setShowModeratorEdit] = useState(false);
+    const [moderatorTeamId, setModeratorTeamId] = useState('');
+    const [moderatorBidPrice, setModeratorBidPrice] = useState(0);
 
     useEffect(() => {
         checkAuth();
@@ -44,9 +55,15 @@ export default function AuctionManagement() {
     useEffect(() => {
         if (isAuthenticated && auctionId) {
             fetchAuctionData();
-            fetchAvailableData();
         }
     }, [isAuthenticated, auctionId]);
+
+    // Load registrations/teams once auction is known so eventId is available
+    useEffect(() => {
+        if (isAuthenticated && auction?.eventId) {
+            fetchAvailableData();
+        }
+    }, [isAuthenticated, auction?.eventId]);
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -102,11 +119,14 @@ export default function AuctionManagement() {
         const headers = { 'Authorization': `Bearer ${token}` };
 
         try {
-            // Fetch all players
-            const playersResponse = await fetch('/api/register', { headers });
-            const playersData = await playersResponse.json();
-            if (playersData.success) {
-                setAvailablePlayers(playersData.players);
+            // Fetch event registrations to display in selection UI
+            if (auction?.eventId) {
+                const regsResponse = await fetch(`/api/registrations?eventId=${(auction.eventId as any)?._id || auction.eventId}`, { headers });
+                // console.log("Regs Response: ", regsResponse);
+                const regsData = await regsResponse.json();
+                if (regsData.success) {
+                    setEventRegistrations(regsData.registrations);
+                }
             }
 
             // Fetch all teams
@@ -146,9 +166,42 @@ export default function AuctionManagement() {
     };
 
     const handleAddPlayers = async () => {
-        await handleAuctionAction('add_players', { playerIds: selectedPlayers });
+        if (selectedRegistrationIds.length === 0) {
+            alert('Please select at least one registration.');
+            return;
+        }
+
+        await handleAuctionAction('add_players', { registrationIds: selectedRegistrationIds });
         setShowPlayerSelection(false);
         setSelectedPlayers([]);
+        setSelectedRegistrationIds([]);
+    };
+
+    const fetchCategoryQueue = async (category: string) => {
+        const token = localStorage.getItem('adminToken');
+        try {
+            const res = await fetch(`/api/auction/queue?category=${encodeURIComponent(category)}`, {
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            const data = await res.json();
+            if (data.success) {
+                setQueuedPlayers(data.players);
+            }
+        } catch (e) {
+            console.error('Failed to fetch queue:', e);
+        }
+    };
+
+    const handleNextRandomizedPlayer = async () => {
+        if (!selectedCategory) return;
+        if (queuedPlayers.length === 0) {
+            await fetchCategoryQueue(selectedCategory);
+        }
+        const next = queuedPlayers[0];
+        if (next) {
+            await handleStartBidding(next._id!.toString());
+            setQueuedPlayers(prev => prev.slice(1));
+        }
     };
 
     const handleAddTeams = async () => {
@@ -157,7 +210,7 @@ export default function AuctionManagement() {
         setSelectedTeams([]);
     };
 
-    const handleStartBidding = async (playerId: string) => {
+    const handleStartBidding = async (registrationId: string) => {
         const token = localStorage.getItem('adminToken');
 
         try {
@@ -169,7 +222,7 @@ export default function AuctionManagement() {
                 },
                 body: JSON.stringify({
                     action: 'start_bidding',
-                    data: { playerId }
+                    data: { registrationId }
                 }),
             });
 
@@ -208,6 +261,47 @@ export default function AuctionManagement() {
             }
         } catch (error) {
             console.error('Failed to finalize bid:', error);
+        }
+    };
+
+    const handleManualAssignment = async () => {
+        if (!currentPlayer || !moderatorTeamId || moderatorBidPrice < 0) {
+            alert('Please select a team and enter a valid bid price');
+            return;
+        }
+
+        const token = localStorage.getItem('adminToken');
+
+        try {
+            const response = await fetch(`/api/auction/${auctionId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    action: 'manual_assign',
+                    data: {
+                        registrationId: currentPlayer._id?.toString(),
+                        teamId: moderatorTeamId,
+                        bidPrice: moderatorBidPrice
+                    }
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                setShowModeratorEdit(false);
+                setModeratorTeamId('');
+                setModeratorBidPrice(0);
+                fetchAuctionData();
+            } else {
+                alert(result.error || 'Failed to assign player');
+            }
+        } catch (error) {
+            console.error('Failed to manually assign player:', error);
+            alert('Failed to assign player');
         }
     };
 
@@ -286,6 +380,14 @@ export default function AuctionManagement() {
                         <div className="flex gap-2">
                             {auction.status === 'upcoming' && (
                                 <Button
+                                    variant="secondary"
+                                    onClick={() => handleAuctionAction('assign_icon_players')}
+                                >
+                                    Assign Icon Captains
+                                </Button>
+                            )}
+                            {auction.status === 'upcoming' && (
+                                <Button
                                     variant="primary"
                                     onClick={() => handleAuctionAction('start_auction')}
                                 >
@@ -319,50 +421,95 @@ export default function AuctionManagement() {
                             <div>
                                 <h3 className="text-lg font-semibold mb-4">Current Player</h3>
                                 {currentPlayer ? (
-                                    <div className="bg-white p-4 rounded-lg border">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <h4 className="text-xl font-bold">{currentPlayer.name}</h4>
-                                            <span className={`px-2 py-1 text-xs rounded-full ${currentPlayer.category === 'Platinum' ? 'bg-purple-100 text-purple-800' :
-                                                currentPlayer.category === 'Diamond' ? 'bg-blue-100 text-blue-800' :
-                                                    currentPlayer.category === 'Gold' ? 'bg-yellow-100 text-yellow-800' :
-                                                        'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                {currentPlayer.category}
-                                            </span>
+                                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg border-2 border-blue-200 shadow-md">
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <img
+                                                src={currentPlayer.photoUrl || '/placeholder-avatar.png'}
+                                                alt={currentPlayer.name}
+                                                className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                                            />
+                                            <div className="flex-1">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <h4 className="text-2xl font-bold text-gray-900">{currentPlayer.name}</h4>
+                                                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${(currentPlayer.selfAssignedCategory || currentPlayer.category) === 'Platinum' ? 'bg-purple-200 text-purple-900' :
+                                                        (currentPlayer.selfAssignedCategory || currentPlayer.category) === 'Diamond' ? 'bg-blue-200 text-blue-900' :
+                                                            (currentPlayer.selfAssignedCategory || currentPlayer.category) === 'Gold' ? 'bg-yellow-200 text-yellow-900' :
+                                                                'bg-gray-200 text-gray-900'
+                                                        }`}>
+                                                        {currentPlayer.selfAssignedCategory || currentPlayer.category}
+                                                    </span>
+                                                </div>
+                                                {currentPlayer.iconPlayerRequest && (
+                                                    <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold rounded bg-orange-200 text-orange-800">
+                                                        CAPTAIN
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
-                                        <p className="text-gray-600 mb-2">{currentPlayer.type}</p>
-                                        <p className="text-sm text-gray-500">Contact: {currentPlayer.contactNo}</p>
+                                        <div className="space-y-2 bg-white bg-opacity-60 p-4 rounded">
+                                            <div className="flex justify-between">
+                                                <span className="text-sm font-medium text-gray-600">Type:</span>
+                                                <span className="text-sm font-semibold text-gray-900">{currentPlayer.type || '-'}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-sm font-medium text-gray-600">Skill Level:</span>
+                                                <span className="text-sm font-semibold text-gray-900">{currentPlayer.skillLevel || '-'}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-sm font-medium text-gray-600">Contact:</span>
+                                                <span className="text-sm font-semibold text-gray-900">{currentPlayer.contactNo}</span>
+                                            </div>
+                                            <div className="flex justify-between border-t pt-2 mt-2">
+                                                <span className="text-sm font-medium text-gray-600">Base Price:</span>
+                                                <span className="text-sm font-bold text-green-700">PKR {(auction.basePrice || 500).toLocaleString()}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-sm font-medium text-gray-600">Increment:</span>
+                                                <span className="text-sm font-bold text-blue-700">PKR {(auction.biddingIncrement || 100).toLocaleString()}</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 ) : (
-                                    <div className="text-center py-8 text-gray-500">
-                                        No player currently being auctioned
+                                    <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border">
+                                        <svg className="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        <p>No player currently being auctioned</p>
                                     </div>
                                 )}
                             </div>
 
                             <div>
                                 <h3 className="text-lg font-semibold mb-4">Bidding Status</h3>
-                                <div className="bg-white p-4 rounded-lg border">
+                                <div className="bg-white p-6 rounded-lg border shadow-sm">
                                     {currentBid ? (
                                         <div>
-                                            <div className="flex justify-between items-center mb-2">
-                                                <span className="text-sm text-gray-600">Current Highest Bid:</span>
-                                                <span className="text-xl font-bold text-green-600">
+                                            <div className="bg-green-50 p-4 rounded-lg mb-4">
+                                                <div className="text-sm text-gray-600 mb-1">Current Highest Bid:</div>
+                                                <div className="text-3xl font-bold text-green-600">
                                                     PKR {currentBid.amount.toLocaleString()}
-                                                </span>
+                                                </div>
                                             </div>
-                                            <p className="text-sm text-gray-600 mb-2">
-                                                By: {currentBid.bidderInfo.teamName} ({currentBid.bidderInfo.ownerName})
-                                            </p>
-                                            <div className="flex justify-between items-center">
-                                                <span className="text-sm text-gray-600">Time Remaining:</span>
-                                                <span className={`text-lg font-bold ${timeRemaining < 30 ? 'text-red-600' : 'text-gray-900'}`}>
+                                            <div className="space-y-3 mb-4">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm text-gray-600">Team:</span>
+                                                    <span className="text-sm font-semibold text-gray-900">{currentBid.bidderInfo.teamName}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-sm text-gray-600">Owner:</span>
+                                                    <span className="text-sm font-semibold text-gray-900">{currentBid.bidderInfo.ownerName}</span>
+                                                </div>
+                                            </div>
+                                            <div className="bg-gray-50 p-3 rounded flex justify-between items-center mb-4">
+                                                <span className="text-sm font-medium text-gray-600">Time Remaining:</span>
+                                                <span className={`text-2xl font-bold ${timeRemaining < 30 ? 'text-red-600' : 'text-gray-900'}`}>
                                                     {formatTime(timeRemaining)}
                                                 </span>
                                             </div>
-                                            <div className="mt-4 flex gap-2">
+                                            <div className="flex flex-col gap-2">
                                                 <Button
                                                     variant="primary"
+                                                    className="w-full"
                                                     onClick={handleFinalizeBid}
                                                     disabled={timeRemaining > 0}
                                                 >
@@ -370,6 +517,7 @@ export default function AuctionManagement() {
                                                 </Button>
                                                 <Button
                                                     variant="secondary"
+                                                    className="w-full"
                                                     onClick={() => handleAuctionAction('next_player')}
                                                 >
                                                     Next Player
@@ -377,12 +525,233 @@ export default function AuctionManagement() {
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="text-center py-4 text-gray-500">
-                                            No bids yet
-                                        </div>
+                                        <>
+                                            <div className="text-center py-8 text-gray-500 mb-4">
+                                                No bids yet for this player
+                                            </div>
+                                            {currentPlayer && (
+                                                <Button
+                                                    variant="primary"
+                                                    className="w-full text-gray-900"
+                                                    onClick={() => setShowModeratorEdit(true)}
+                                                >
+                                                    Manual Assignment
+                                                </Button>
+                                            )}
+                                        </>
                                     )}
                                 </div>
                             </div>
+                        </div>
+                    </Card>
+                )}
+
+                {/* Moderator Manual Assignment Modal */}
+                {showModeratorEdit && currentPlayer && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                        <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+                            <h3 className="text-xl font-bold mb-4 text-gray-900">Manual Assignment</h3>
+                            <div className="space-y-4 mb-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Player: <span className="font-bold text-gray-900">{currentPlayer.name}</span>
+                                    </label>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Select Team
+                                    </label>
+                                    <Select
+                                        value={moderatorTeamId}
+                                        onChange={(e) => setModeratorTeamId(e.target.value)}
+                                        options={[
+                                            { value: '', label: 'Select a team' },
+                                            ...auction.teams.map((team: any) => ({
+                                                value: team._id.toString(),
+                                                label: `${team.name} (${team.owner})`
+                                            }))
+                                        ]}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Final Bid Price (PKR)
+                                    </label>
+                                    <NumberInput
+                                        value={moderatorBidPrice}
+                                        onChange={(e: any) => setModeratorBidPrice(Number(e.target.value))}
+                                        placeholder="Enter bid price"
+                                        className="text-gray-900"
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex gap-3">
+                                <Button
+                                    variant="primary"
+                                    className="flex-1"
+                                    onClick={handleManualAssignment}
+                                >
+                                    Assign Player
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    className="flex-1"
+                                    onClick={() => {
+                                        setShowModeratorEdit(false);
+                                        setModeratorTeamId('');
+                                        setModeratorBidPrice(0);
+                                    }}
+                                >
+                                    Cancel
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {auction.status === 'live' && (
+                    <Card title="Category Moderation" className="mb-8">
+                        <div className="flex flex-col gap-6">
+                            {/* Category Selection Header */}
+                            <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                    <div className="flex-1">
+                                        <h4 className="font-semibold text-lg mb-2 text-gray-900">Select Auction Category</h4>
+                                        <p className="text-sm text-gray-600">Categories proceed in order: Platinum → Diamond → Gold</p>
+                                    </div>
+                                    {categoryLocked && (
+                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+                                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                                            </svg>
+                                            Category Locked
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                                <div className="lg:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                        Current Category
+                                    </label>
+                                    <Select
+                                        value={selectedCategory}
+                                        onChange={(e) => {
+                                            if (!categoryLocked) {
+                                                setSelectedCategory(e.target.value);
+                                            }
+                                        }}
+                                        disabled={categoryLocked}
+                                        options={[
+                                            { value: '', label: 'Select Category' },
+                                            { value: 'Platinum', label: `Platinum (${auction.players.filter((p: any) => (p.selfAssignedCategory || p.category) === 'Platinum' && p.status === 'available').length} available)` },
+                                            { value: 'Diamond', label: `Diamond (${auction.players.filter((p: any) => (p.selfAssignedCategory || p.category) === 'Diamond' && p.status === 'available').length} available)` },
+                                            { value: 'Gold', label: `Gold (${auction.players.filter((p: any) => (p.selfAssignedCategory || p.category) === 'Gold' && p.status === 'available').length} available)` },
+                                        ]}
+                                    />
+                                </div>
+                                <div className="flex flex-col gap-2 justify-end">
+                                    {!categoryLocked && selectedCategory && (
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => {
+                                                if (selectedCategory) {
+                                                    fetchCategoryQueue(selectedCategory);
+                                                    setCategoryLocked(true);
+                                                }
+                                            }}
+                                            className="w-full"
+                                        >
+                                            Lock & Load Category
+                                        </Button>
+                                    )}
+                                    {categoryLocked && (
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => {
+                                                const availableCount = auction.players.filter((p: any) => (p.selfAssignedCategory || p.category) === selectedCategory && p.status === 'available').length;
+                                                if (availableCount === 0 || confirm('Are you sure you want to unlock and change category?')) {
+                                                    setCategoryLocked(false);
+                                                    setQueuedPlayers([]);
+                                                }
+                                            }}
+                                            className="w-full"
+                                        >
+                                            Unlock Category
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+
+                            {selectedCategory && categoryLocked && (
+                                <>
+                                    <div className="bg-white p-4 rounded-lg border">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <div>
+                                                <h5 className="font-semibold text-gray-900">{selectedCategory} Category</h5>
+                                                <p className="text-sm text-gray-600 mt-1">
+                                                    {auction.players.filter((p: any) => (p.selfAssignedCategory || p.category) === selectedCategory && p.status === 'available').length} players available
+                                                </p>
+                                            </div>
+                                            <Button
+                                                variant="primary"
+                                                onClick={handleNextRandomizedPlayer}
+                                                disabled={!selectedCategory || auction.players.filter((p: any) => (p.selfAssignedCategory || p.category) === selectedCategory && p.status === 'available').length === 0}
+                                                className="px-6"
+                                            >
+                                                Next Random Player
+                                            </Button>
+                                        </div>
+                                        <div className="bg-gray-50 p-3 rounded">
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="text-gray-600">Progress:</span>
+                                                <span className="font-semibold text-gray-900">
+                                                    {auction.players.filter((p: any) => (p.selfAssignedCategory || p.category) === selectedCategory && p.status === 'sold').length} sold / {auction.players.filter((p: any) => (p.selfAssignedCategory || p.category) === selectedCategory).length} total
+                                                </span>
+                                            </div>
+                                            <div className="mt-2 bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                                                <div
+                                                    className="bg-blue-600 h-full transition-all"
+                                                    style={{
+                                                        width: `${(auction.players.filter((p: any) => (p.selfAssignedCategory || p.category) === selectedCategory && p.status === 'sold').length / Math.max(1, auction.players.filter((p: any) => (p.selfAssignedCategory || p.category) === selectedCategory).length)) * 100}%`
+                                                    }}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="overflow-x-auto">
+                                        <h5 className="font-semibold mb-3">Available Players in {selectedCategory}</h5>
+                                        <table className="min-w-full divide-y divide-gray-200">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Skill</th>
+                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {auction.players
+                                                    .filter((p: any) => (p.selfAssignedCategory || p.category) === selectedCategory)
+                                                    .map((p: any) => (
+                                                        <tr key={p._id?.toString()} className={p.status === 'sold' ? 'bg-gray-50 opacity-60' : ''}>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{p.name}</td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{p.type || '-'}</td>
+                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{p.skillLevel || '-'}</td>
+                                                            <td className="px-4 py-3 whitespace-nowrap">
+                                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${p.status === 'sold' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                                                                    {p.status || 'available'}
+                                                                </span>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </>
+                            )}
                         </div>
                     </Card>
                 )}
@@ -403,7 +772,7 @@ export default function AuctionManagement() {
                             <div className="text-sm text-gray-600">Available</div>
                         </Card>
                         <Card className="text-center">
-                            <div className="text-3xl font-bold text-purple-600">PKR {stats.totalRevenue.toLocaleString()}</div>
+                            <div className="text-3xl font-bold text-purple-600">PKR {stats.totalRevenue}</div>
                             <div className="text-sm text-gray-600">Total Revenue</div>
                         </Card>
                     </div>
@@ -423,34 +792,69 @@ export default function AuctionManagement() {
                     </div>
 
                     {showPlayerSelection && (
-                        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                            <h4 className="font-semibold mb-4">Select Players to Add</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-64 overflow-y-auto">
-                                {availablePlayers.map((player) => (
-                                    <label key={player._id?.toString()} className="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50">
+                        <div className="mb-6 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
+                            <div className="flex justify-between items-center mb-4">
+                                <h4 className="font-semibold text-lg text-gray-900">Select Players to Add</h4>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        className="w-4 h-4"
+                                        checked={selectedRegistrationIds.length === eventRegistrations.length}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setSelectedRegistrationIds(eventRegistrations.map(r => r._id!.toString()));
+                                            } else {
+                                                setSelectedRegistrationIds([]);
+                                            }
+                                        }}
+                                    />
+                                    <span className="font-medium text-sm text-blue-600">Select All ({eventRegistrations.length})</span>
+                                </label>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto p-2">
+                                {eventRegistrations.map((reg) => (
+                                    <label key={reg._id?.toString()} className="flex items-start space-x-3 p-3 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-blue-300 cursor-pointer transition-all">
                                         <input
                                             type="checkbox"
-                                            checked={selectedPlayers.includes(player._id!.toString())}
+                                            className="mt-1 w-4 h-4"
+                                            checked={selectedRegistrationIds.includes(reg._id!.toString())}
                                             onChange={(e) => {
                                                 if (e.target.checked) {
-                                                    setSelectedPlayers([...selectedPlayers, player._id!.toString()]);
+                                                    setSelectedRegistrationIds([...selectedRegistrationIds, reg._id!.toString()]);
                                                 } else {
-                                                    setSelectedPlayers(selectedPlayers.filter(id => id !== player._id!.toString()));
+                                                    setSelectedRegistrationIds(selectedRegistrationIds.filter(id => id !== reg._id!.toString()));
                                                 }
                                             }}
                                         />
-                                        <div className="flex-1">
-                                            <div className="font-medium">{player.name}</div>
-                                            <div className="text-sm text-gray-600">{player.type} - {player.category}</div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-medium text-gray-900 truncate">{reg.name}</div>
+                                            <div className="text-xs text-gray-600 mt-1">{reg.contactNo}</div>
+                                            <div className="mt-2 flex items-center gap-2">
+                                                <span className={`px-2 py-0.5 text-xs font-medium rounded ${reg.selfAssignedCategory === 'Platinum' ? 'bg-purple-100 text-purple-700' :
+                                                    reg.selfAssignedCategory === 'Diamond' ? 'bg-blue-100 text-blue-700' :
+                                                        reg.selfAssignedCategory === 'Gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                            'bg-gray-100 text-gray-700'
+                                                    }`}>
+                                                    {reg.selfAssignedCategory || 'Uncategorized'}
+                                                </span>
+                                                {reg.iconPlayerRequest && (
+                                                    <span className="px-2 py-0.5 text-xs font-medium rounded bg-orange-100 text-orange-700">
+                                                        Captain
+                                                    </span>
+                                                )}
+                                            </div>
                                         </div>
                                     </label>
                                 ))}
                             </div>
-                            <div className="flex gap-2 mt-4">
-                                <Button onClick={handleAddPlayers} disabled={selectedPlayers.length === 0}>
-                                    Add Selected Players
+                            <div className="flex gap-2 mt-6 pt-4 border-t border-gray-200">
+                                <Button onClick={handleAddPlayers} disabled={selectedRegistrationIds.length === 0}>
+                                    Add {selectedRegistrationIds.length} Selected
                                 </Button>
-                                <Button variant="secondary" onClick={() => setShowPlayerSelection(false)}>
+                                <Button variant="secondary" onClick={() => {
+                                    setShowPlayerSelection(false);
+                                    setSelectedRegistrationIds([]);
+                                }}>
                                     Cancel
                                 </Button>
                             </div>
@@ -462,13 +866,19 @@ export default function AuctionManagement() {
                             <thead className="bg-gray-50">
                                 <tr>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Name
+                                        Player
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Contact
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Type
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Category
+                                    </th>
+                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                        Skill Level
                                     </th>
                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                         Status
@@ -480,25 +890,43 @@ export default function AuctionManagement() {
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
                                 {auction.players.map((player: any) => (
-                                    <tr key={player._id?.toString()}>
-                                        <td className="px-6 py-4 whitespace-nowrap">{player.name}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">{player.type}</td>
+                                    <tr key={player._id?.toString()} className="hover:bg-gray-50">
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 py-1 text-xs rounded-full ${player.category === 'Platinum' ? 'bg-purple-100 text-purple-800' :
-                                                player.category === 'Diamond' ? 'bg-blue-100 text-blue-800' :
-                                                    player.category === 'Gold' ? 'bg-yellow-100 text-yellow-800' :
+                                            <div className="flex items-center">
+                                                <div className="flex-shrink-0 h-10 w-10">
+                                                    <img
+                                                        className="h-10 w-10 rounded-full object-cover"
+                                                        src={player.photoUrl || '/placeholder-avatar.png'}
+                                                        alt={player.name}
+                                                    />
+                                                </div>
+                                                <div className="ml-4">
+                                                    <div className="text-sm font-medium text-gray-900">{player.name}</div>
+                                                    {player.iconPlayerRequest && (
+                                                        <span className="text-xs text-orange-600 font-medium">Captain Request</span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{player.contactNo}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{player.type || '-'}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${(player.selfAssignedCategory || player.category) === 'Platinum' ? 'bg-purple-100 text-purple-800' :
+                                                (player.selfAssignedCategory || player.category) === 'Diamond' ? 'bg-blue-100 text-blue-800' :
+                                                    (player.selfAssignedCategory || player.category) === 'Gold' ? 'bg-yellow-100 text-yellow-800' :
                                                         'bg-gray-100 text-gray-800'
                                                 }`}>
-                                                {player.category}
+                                                {player.selfAssignedCategory || player.category}
                                             </span>
                                         </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{player.skillLevel || '-'}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 py-1 text-xs rounded-full ${player.status === 'sold' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${player.status === 'sold' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
                                                 }`}>
                                                 {player.status || 'available'}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
                                             {auction.status === 'live' && player.status === 'available' && (
                                                 <Button
                                                     size="sm"
@@ -506,6 +934,9 @@ export default function AuctionManagement() {
                                                 >
                                                     Start Bidding
                                                 </Button>
+                                            )}
+                                            {player.status === 'sold' && player.bidPrice && (
+                                                <span className="text-green-600 font-medium">PKR {player.bidPrice.toLocaleString()}</span>
                                             )}
                                         </td>
                                     </tr>
@@ -529,13 +960,14 @@ export default function AuctionManagement() {
                     </div>
 
                     {showTeamSelection && (
-                        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-                            <h4 className="font-semibold mb-4">Select Teams to Add</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-64 overflow-y-auto">
+                        <div className="mb-6 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
+                            <h4 className="font-semibold text-lg mb-4 text-gray-900">Select Teams to Add</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto p-2">
                                 {availableTeams.map((team) => (
-                                    <label key={team._id?.toString()} className="flex items-center space-x-2 p-2 border rounded hover:bg-gray-50">
+                                    <label key={team._id?.toString()} className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-blue-300 cursor-pointer transition-all">
                                         <input
                                             type="checkbox"
+                                            className="w-4 h-4"
                                             checked={selectedTeams.includes(team._id!.toString())}
                                             onChange={(e) => {
                                                 if (e.target.checked) {
@@ -545,15 +977,15 @@ export default function AuctionManagement() {
                                                 }
                                             }}
                                         />
-                                        <div className="flex-1">
-                                            <div className="font-medium">{team.name}</div>
-                                            <div className="text-sm text-gray-600">Owner: {team.owner}</div>
-                                            <div className="text-sm text-gray-600">Budget: PKR {team.totalPoints?.toLocaleString()}</div>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="font-semibold text-gray-900">{team.name}</div>
+                                            <div className="text-sm text-gray-600 mt-1">Owner: {team.owner}</div>
+                                            <div className="text-sm font-medium text-green-600 mt-1">Budget: PKR {team.totalPoints?.toLocaleString()}</div>
                                         </div>
                                     </label>
                                 ))}
                             </div>
-                            <div className="flex gap-2 mt-4">
+                            <div className="flex gap-2 mt-6 pt-4 border-t border-gray-200">
                                 <Button onClick={handleAddTeams} disabled={selectedTeams.length === 0}>
                                     Add Selected Teams
                                 </Button>
@@ -564,39 +996,41 @@ export default function AuctionManagement() {
                         </div>
                     )}
 
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Team Name
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Owner
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Budget
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Spent
-                                    </th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        Remaining
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {auction.teams.map((team: any) => (
-                                    <tr key={team._id?.toString()}>
-                                        <td className="px-6 py-4 whitespace-nowrap font-medium">{team.name}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">{team.owner}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">PKR {team.totalBudget.toLocaleString()}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">PKR {team.pointsSpent.toLocaleString()}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap">PKR {team.pointsLeft.toLocaleString()}</td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {auction.teams.map((team: any) => (
+                            <div key={team._id?.toString()} className="bg-white rounded-lg border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow">
+                                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
+                                    <h3 className="text-white font-semibold text-lg text-gray-900">{team.name}</h3>
+                                    <p className="text-blue-100 text-sm mt-0.5">Owner: {team.owner}</p>
+                                </div>
+                                <div className="p-4 space-y-3">
+                                    <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                                        <span className="text-sm text-gray-600">Total Budget</span>
+                                        <span className="text-sm font-semibold text-gray-900">PKR {team.totalPoints?.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center pb-2 border-b border-gray-100">
+                                        <span className="text-sm text-gray-600">Spent</span>
+                                        <span className="text-sm font-semibold text-red-600">PKR {team.pointsSpent?.toLocaleString() || 0}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-sm text-gray-600">Remaining</span>
+                                        <span className="text-sm font-semibold text-green-600">PKR {team.pointsLeft?.toLocaleString() || team.totalPoints?.toLocaleString()}</span>
+                                    </div>
+                                    <div className="pt-3 border-t border-gray-100">
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-xs text-gray-500">Players</span>
+                                            <span className="text-xs font-medium text-blue-600">{(team.players || []).length}</span>
+                                        </div>
+                                        <div className="mt-2 bg-gray-200 rounded-full h-2 overflow-hidden">
+                                            <div
+                                                className="bg-blue-600 h-full transition-all"
+                                                style={{ width: `${Math.min(100, ((team.pointsSpent || 0) / (team.totalPoints || 1)) * 100)}%` }}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 </Card>
             </div>

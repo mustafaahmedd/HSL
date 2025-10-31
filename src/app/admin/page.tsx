@@ -240,46 +240,12 @@ export default function AdminDashboard() {
     );
   }
 
-  if (!isAuthenticated) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-        <Card className="max-w-md w-full" title="Admin Login">
-          <form onSubmit={handleLogin} className="space-y-4">
-            <Input
-              label="Username"
-              type="text"
-              value={loginData.username}
-              onChange={(e) => setLoginData({ ...loginData, username: e.target.value })}
-              required
-            />
-            <Input
-              label="Password"
-              type="password"
-              value={loginData.password}
-              onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
-              required
-            />
-            {loginError && <p className="text-red-600 text-sm">{loginError}</p>}
-            <Button type="submit" variant="primary" className="w-full">
-              Login
-            </Button>
-          </form>
-          <div className="mt-4 flex justify-center">
-            <a href="/" className="text-blue-600 hover:underline">
-              ← Back to Home
-            </a>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+          <div className="hidden sm:flex flex-col sm:flex-row gap-2 sm:gap-4">
             <Link href="/admin/events">
               <Button variant="secondary" className="w-full sm:w-auto">Manage Events</Button>
             </Link>
@@ -469,13 +435,15 @@ export default function AdminDashboard() {
 
         {/* Teams Section */}
         <Card title="Teams" className="mb-8">
-          <div className="mb-4">
-            {/* <Button onClick={() => setShowTeamForm(!showTeamForm)}>
-              Create Team
-            </Button> */}
+          <div className="mb-4 flex flex-col sm:flex-row gap-2 sm:gap-3">
             <Button type="button" variant="primary" onClick={() => window.open('/admin/teams/create', '_blank')}>
               Create Team
             </Button>
+            <Link href="/admin/teams">
+              <Button type="button" variant="secondary">
+                View All Teams
+              </Button>
+            </Link>
           </div>
 
           {showTeamForm && (
@@ -511,12 +479,17 @@ export default function AdminDashboard() {
           <div className="space-y-2">
             {teams && teams.length > 0 ? (
               teams.map((team) => (
-                <div key={team._id?.toString()} className="p-3 bg-gray-50 rounded">
-                  <h4 className="font-semibold">{team.name}</h4>
-                  <p className="text-sm text-gray-600">
-                    Owner: {team.owner} | Budget: {team.totalPoints} | Spent: {team.pointsSpent}
-                  </p>
-                </div>
+                <Link key={team._id?.toString()} href={`/admin/teams/${team._id?.toString()}`} className="block">
+                  <div className="p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded border border-gray-200">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-gray-900">{team.name}</h4>
+                      <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">{team.status}</span>
+                    </div>
+                    <p className="mt-1 text-sm text-gray-600">
+                      Owner: {team.owner || '—'} | Budget: {team.totalPoints ?? 0} | Spent: {team.pointsSpent ?? 0}
+                    </p>
+                  </div>
+                </Link>
               ))
             ) : (
               <p className="text-gray-500 text-sm">No teams created yet.</p>

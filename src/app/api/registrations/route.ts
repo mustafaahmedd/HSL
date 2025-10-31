@@ -64,16 +64,13 @@ export async function POST(request: NextRequest) {
       name,
       email,
       phone,
-      studentId,
-      department,
-      emergencyContact,
       teamName,
       teamMembers,
       specialRequirements,
     } = body;
 
     // Validate required fields
-    if (!eventId || !name || !email || !phone || !studentId || !department || !emergencyContact) {
+    if (!eventId || !name || !email || !phone ) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -101,7 +98,6 @@ export async function POST(request: NextRequest) {
       eventId,
       $or: [
         { email },
-        { studentId },
       ],
     });
 
@@ -119,8 +115,6 @@ export async function POST(request: NextRequest) {
         name,
         contactNo: phone,
         email,
-        studentId,
-        courseEnrolled: department,
         isHikmahStudent: true,
         timings: 'Any',
         playBothTournaments: false,
@@ -141,9 +135,6 @@ export async function POST(request: NextRequest) {
       name,
       email,
       phone,
-      studentId,
-      department,
-      emergencyContact,
       teamName,
       teamMembers: teamMembers ? teamMembers.split(',').map((m: string) => m.trim()) : [],
       specialRequirements,

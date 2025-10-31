@@ -32,6 +32,7 @@ export interface ITeam {
   totalPoints?: number;
   pointsSpent?: number;
   pointsLeft?: number;
+  maxPlayers?: number; // Maximum number of players allowed in the team
   
   // Players array (type depends on eventType)
   players: ITeamPlayer[] | IAuctionTeamPlayer[];
