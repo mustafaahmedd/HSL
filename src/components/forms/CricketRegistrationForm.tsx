@@ -152,18 +152,17 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
             const formDataToSend = new FormData();
             formDataToSend.append('eventId', eventId);
 
-            // Object.entries(formData).forEach(([key, value]) => {
-            //     formDataToSend.append(key, value.toString());
-            // });
+            Object.entries(formData).forEach(([key, value]) => {
+                formDataToSend.append(key, value.toString());
+            });
 
             if (photo) {
                 formDataToSend.append('photo', photo);
             }
-
-            formDataToSend.append('data', JSON.stringify({
-                eventId,
-                ...formData  // Spread all your form fields
-            }));
+            // formDataToSend.append('data', JSON.stringify({
+            //     eventId,
+            //     ...formData  // Spread all your form fields
+            // }));
 
             const response = await fetch('/api/register', {
                 method: 'POST',
@@ -308,7 +307,7 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
 
                     {/* Cricket Specific Details */}
                     <div className="border-b pb-4">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Cricket Details</h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-4">Sport Specific Details</h3>
 
                         <div className="space-y-4">
                             <Select

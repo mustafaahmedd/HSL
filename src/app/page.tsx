@@ -222,7 +222,6 @@ export default function HSLHome() {
       </div>
 
       {/* Auction Section */}
-
       <div className="py-20 bg-gradient-to-r from-green-900 via-emerald-900 to-teal-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           {/* <div className="text-center mb-16">

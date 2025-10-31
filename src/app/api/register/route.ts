@@ -8,25 +8,27 @@ import { IRegistration } from '@/types/Registration';
 import { Types } from 'mongoose';
 import { saveFile } from '@/lib/upload';
 
+await dbConnect();
+
 export async function POST(request: NextRequest) {
   try {
-    await dbConnect();
     const formData = await request.formData();
-
-    const rawBody = JSON.parse(formData.get('data') as string);
-    const photoFile = formData.get('photo') as File;
+    console.log(formData);
+    const data = Object.fromEntries(formData.entries());
+    const photo = formData.get('photo') as File;
+    // const rawBody = JSON.parse(formData.get('data') as string);
     
     // Extract all form fields
     const body = {
-      ...rawBody,
-      playedPreviousLeague: rawBody.playedPreviousLeague === 'true' || rawBody.playedPreviousLeague === 'yes',
-      playBothTournaments: rawBody.playBothTournaments === 'true' || rawBody.playBothTournaments === 'yes',
-      iconPlayerRequest: rawBody.iconPlayerRequest === 'true' || rawBody.iconPlayerRequest === 'yes',
-      assurance: rawBody.assurance === 'true',
+      ...data,
+      playedPreviousLeague: data.playedPreviousLeague === 'true' || data.playedPreviousLeague === 'yes',
+      playBothTournaments: data.playBothTournaments === 'true' || data.playBothTournaments === 'yes',
+      iconPlayerRequest: data.iconPlayerRequest === 'true' || data.iconPlayerRequest === 'yes',
+      assurance: data.assurance === 'true',
     };
 
     // Check if event exists first
-    const event = await Event.findById(body.eventId);
+    const event = await Event.findById(data.eventId);
     if (!event) {
       return NextResponse.json(
         { error: 'Event not found' },
@@ -52,9 +54,9 @@ export async function POST(request: NextRequest) {
     // Handle photo upload first
     let photoUrl = '/placeholder.jpg';
     // const photoFile = formData.get('photo') as File;
-    if (photoFile && photoFile.size > 0) {
+    if (photo && photo.size > 0) {
       try {
-        const uploadedFile = await saveFile(photoFile, 'players');
+        const uploadedFile = await saveFile(photo, 'players');
         photoUrl = uploadedFile.url;
       } catch (error: any) {
         return NextResponse.json(
@@ -66,8 +68,8 @@ export async function POST(request: NextRequest) {
 
     // Step 1: Find or create player based on name + contactNo
     let player = await Player.findOne({
-      name: body.name,
-      contactNo: body.contactNo
+      name: data.name,
+      contactNo: data.contactNo
     });
 
     if (!player) {
@@ -86,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     // Step 2: Create registration with event-specific data
     const registrationData: Partial<IRegistration> = {
-      eventId: new Types.ObjectId(body.eventId),
+      eventId: new Types.ObjectId(data.eventId as string),
       eventName: event.title,
       playerId: player._id,
       ...body,
@@ -98,7 +100,7 @@ export async function POST(request: NextRequest) {
 
     // Step 3: Increment event participant count
     await Event.findByIdAndUpdate(
-      body.eventId,
+      data.eventId,
       { $inc: { totalParticipants: 1 } },
       { new: true }
     );
@@ -109,7 +111,7 @@ export async function POST(request: NextRequest) {
       registration: {
         id: registration._id,
         playerId: player._id,
-        eventId: body.eventId,
+        eventId: data.eventId,
         status: registration.status
       }
     });
