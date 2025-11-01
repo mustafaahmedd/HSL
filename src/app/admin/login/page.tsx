@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Input } from '@/components/ui';
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
     const router = useRouter();
     const params = useSearchParams();
     const [loginData, setLoginData] = useState({ username: '', password: '' });
@@ -67,6 +67,20 @@ export default function AdminLoginPage() {
                 </div>
             </Card>
         </div>
+    );
+}
+
+export default function AdminLoginPage() {
+    return (
+        <Suspense fallback={
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+                <Card className="max-w-md w-full" title="Admin Login">
+                    <div className="text-center py-8">Loading...</div>
+                </Card>
+            </div>
+        }>
+            <AdminLoginForm />
+        </Suspense>
     );
 }
 
