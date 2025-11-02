@@ -5,6 +5,7 @@ import Event from '@/models/Event';
 import Player from '@/models/Player';
 import { isAuthenticated } from '@/lib/auth';
 
+await dbConnect();
 // GET /api/registrations - Get all registrations (admin only)
 export async function GET(request: NextRequest) {
   try {
@@ -12,8 +13,6 @@ export async function GET(request: NextRequest) {
     if (!isAuth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    await dbConnect();
 
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
@@ -26,7 +25,7 @@ export async function GET(request: NextRequest) {
     if (status) query.status = status;
 
     const registrations = await Registration.find(query)
-      .populate('eventId', 'name eventType startDate endDate')
+      .populate('eventId', 'title eventType startDate startTime endTime venue images maxParticipants')
       .populate('playerId', 'name email phone')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
@@ -56,8 +55,6 @@ export async function GET(request: NextRequest) {
 // POST /api/registrations - Create new registration
 export async function POST(request: NextRequest) {
   try {
-    await dbConnect();
-
     const body = await request.json();
     const {
       eventId,
@@ -171,11 +168,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await dbConnect();
-
     const body = await request.json();
     const { 
       registrationId, 
+      approvedCategory,
+      approvedIconPlayer,
       status, 
       rejectionReason,
       name,
@@ -234,6 +231,10 @@ export async function PUT(request: NextRequest) {
     if (playingStyle !== undefined) updateData.playingStyle = playingStyle;
     if (position !== undefined) updateData.position = position;
 
+    // Update admin approved fields
+    if (approvedCategory !== undefined) updateData.approvedCategory = approvedCategory;
+    if (approvedIconPlayer !== undefined) updateData.approvedIconPlayer = approvedIconPlayer;
+
     const registration = await Registration.findByIdAndUpdate(
       registrationId,
       updateData,
@@ -266,13 +267,11 @@ export async function DELETE(request: NextRequest) {
   try {
     const isAuth = await isAuthenticated(request);
     if (!isAuth) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized to delete registrations' }, { status: 401 });
     }
 
-    await dbConnect();
-
     const { searchParams } = new URL(request.url);
-    const registrationId = searchParams.get('id');
+    const registrationId = searchParams.get('registrationId');
 
     if (!registrationId) {
       return NextResponse.json(
@@ -300,8 +299,6 @@ export async function DELETE(request: NextRequest) {
     await Event.findByIdAndUpdate(eventId, {
       $inc: { totalParticipants: -1 },
     });
-
-    console.log(`Registration ${registrationId} deleted. Event ${eventId} participant count decremented.`);
 
     return NextResponse.json({
       success: true,

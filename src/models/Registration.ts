@@ -86,6 +86,17 @@ const RegistrationSchema = new Schema<IRegistration>(
       type: String,
       trim: true,
     },
+    
+    // Admin approved fields
+    approvedCategory: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    approvedIconPlayer: {
+      type: Boolean,
+      default: false,
+    },
     playerRole: {
       type: String,
       trim: true,

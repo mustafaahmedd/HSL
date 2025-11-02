@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Card, Button, Input, Select } from '@/components/ui';
+import { Card, Button, Input, Select, Pagination } from '@/components/ui';
 import { IRegistration } from '@/types/Registration';
 import { IEvent } from '@/types/Event';
 
@@ -110,6 +110,14 @@ export default function EventParticipants() {
     const [filterCategory, setFilterCategory] = useState<string>('all');
     const [filterPlayBoth, setFilterPlayBoth] = useState<string>('all'); // all, yes, no
 
+    // Pagination states
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10);
+
+    // Bulk action states
+    const [selectedRegistrationIds, setSelectedRegistrationIds] = useState<string[]>([]);
+    const [showBulkActions, setShowBulkActions] = useState(false);
+
     // Image modal state
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
@@ -176,7 +184,15 @@ export default function EventParticipants() {
         }
 
         setFilteredRegistrations(filtered);
+        // Reset to first page when filters change
+        setCurrentPage(1);
     }, [searchTerm, filterIconPlayer, filterPreviousLeague, filterPlayBoth, filterCategory, registrations]);
+
+    // Calculate pagination
+    const totalPages = Math.ceil(filteredRegistrations.length / itemsPerPage);
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedRegistrations = filteredRegistrations.slice(startIndex, endIndex);
 
     const checkAuth = () => {
         const token = localStorage.getItem('adminToken');
@@ -243,6 +259,84 @@ export default function EventParticipants() {
         } catch (error) {
             console.error('Failed to update registration:', error);
             alert('Failed to update registration');
+        }
+    };
+
+    const deleteRegistration = async (registrationId: string) => {
+        try {
+            const token = localStorage.getItem('adminToken');
+            const response = await fetch(`/api/registrations?registrationId=${registrationId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                },
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                fetchEventRegistrations();
+            } else {
+                alert('Failed to delete registration: ' + (data.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Failed to delete registration:', error);
+            alert('Failed to delete registration');
+        }
+    };
+
+    const handleBulkStatusUpdate = async (newStatus: 'approved' | 'rejected') => {
+        if (selectedRegistrationIds.length === 0) {
+            alert('Please select at least one registration');
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to ${newStatus === 'approved' ? 'approve' : 'reject'} ${selectedRegistrationIds.length} registration(s)?`)) {
+            return;
+        }
+
+        try {
+            const token = localStorage.getItem('adminToken');
+
+            // Update each selected registration, Handler is designed for individual Updates, not bulk updates
+            const updatePromises = selectedRegistrationIds.map(regId =>
+                fetch('/api/registrations', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        registrationId: regId,
+                        status: newStatus,
+                    }),
+                })
+            );
+
+            await Promise.all(updatePromises);
+
+            setSelectedRegistrationIds([]);
+            setShowBulkActions(false);
+            fetchEventRegistrations();
+            alert(`Successfully ${newStatus} ${selectedRegistrationIds.length} registration(s)`);
+        } catch (error) {
+            console.error('Failed to update registrations:', error);
+            alert('Failed to update registrations');
+        }
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedRegistrationIds.length === paginatedRegistrations.length) {
+            setSelectedRegistrationIds([]);
+        } else {
+            setSelectedRegistrationIds(paginatedRegistrations.map(reg => reg._id!.toString()));
+        }
+    };
+
+    const toggleSelectRegistration = (regId: string) => {
+        if (selectedRegistrationIds.includes(regId)) {
+            setSelectedRegistrationIds(selectedRegistrationIds.filter(id => id !== regId));
+        } else {
+            setSelectedRegistrationIds([...selectedRegistrationIds, regId]);
         }
     };
 
@@ -476,6 +570,59 @@ export default function EventParticipants() {
                     </div>
                 </div>
 
+                {/* Bulk Actions Bar */}
+                {selectedRegistrationIds.length > 0 && (
+                    <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                            <div className="text-sm font-medium text-blue-900">
+                                {selectedRegistrationIds.length} participant(s) selected
+                            </div>
+                            <div className="flex gap-2">
+                                <Button
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={() => handleBulkStatusUpdate('approved')}
+                                >
+                                    Approve Selected
+                                </Button>
+                                <Button
+                                    variant="danger"
+                                    size="sm"
+                                    onClick={() => handleBulkStatusUpdate('rejected')}
+                                >
+                                    Reject Selected
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => setSelectedRegistrationIds([])}
+                                >
+                                    Clear Selection
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Pagination */}
+                {filteredRegistrations.length > 0 && (
+                    <div className="mb-4">
+                        <Pagination
+                            currentPage={currentPage}
+                            totalPages={totalPages}
+                            totalItems={filteredRegistrations.length}
+                            itemsPerPage={itemsPerPage}
+                            onPageChange={setCurrentPage}
+                            onItemsPerPageChange={(newItemsPerPage) => {
+                                setItemsPerPage(newItemsPerPage);
+                                setCurrentPage(1);
+                            }}
+                            showItemsPerPage={true}
+                            itemsPerPageOptions={[10, 20, 50, 100]}
+                        />
+                    </div>
+                )}
+
                 {/* Table View */}
                 {viewMode === 'table' ? (
                     <Card className="bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden">
@@ -483,6 +630,14 @@ export default function EventParticipants() {
                             <table className="min-w-full divide-y divide-gray-200">
                                 <thead className="bg-gray-50">
                                     <tr>
+                                        <th className="px-3 py-3 text-left">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedRegistrationIds.length === paginatedRegistrations.length && paginatedRegistrations.length > 0}
+                                                onChange={toggleSelectAll}
+                                                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                            />
+                                        </th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Photo</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                                         <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
@@ -494,15 +649,23 @@ export default function EventParticipants() {
                                     </tr>
                                 </thead>
                                 <tbody className="bg-white divide-y divide-gray-200">
-                                    {filteredRegistrations.length === 0 ? (
+                                    {paginatedRegistrations.length === 0 ? (
                                         <tr>
-                                            <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                                            <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
                                                 No participants found
                                             </td>
                                         </tr>
                                     ) : (
-                                        filteredRegistrations.map((registration) => (
+                                        paginatedRegistrations.map((registration) => (
                                             <tr key={String(registration._id)} className="hover:bg-gray-50">
+                                                <td className="px-3 py-3 whitespace-nowrap">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selectedRegistrationIds.includes(registration._id!.toString())}
+                                                        onChange={() => toggleSelectRegistration(registration._id!.toString())}
+                                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                                                    />
+                                                </td>
                                                 <td className="px-3 py-3 whitespace-nowrap">
                                                     <img
                                                         src={registration.photoUrl}
@@ -592,6 +755,24 @@ export default function EventParticipants() {
                                                         <Button size="sm" variant={registration.status === 'pending' ? 'secondary' : 'primary'} onClick={() => handleMarkPayment(registration)}>
                                                             {registration.isPaid ? 'Paid' : 'Pay'}
                                                         </Button>
+
+                                                    </div>
+                                                    <div className="flex gap-1 mt-2">
+                                                        <Button
+                                                            size="sm"
+                                                            variant="danger"
+                                                            onClick={() => {
+                                                                if (
+                                                                    confirm(
+                                                                        `Are you sure you want to delete the registration for "${registration.name}"? This action cannot be undone.`
+                                                                    )
+                                                                ) {
+                                                                    deleteRegistration(registration._id!.toString());
+                                                                }
+                                                            }}
+                                                        >
+                                                            Delete
+                                                        </Button>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -604,7 +785,7 @@ export default function EventParticipants() {
                 ) : (
                     /* Card View */
                     <div className="space-y-4">
-                        {filteredRegistrations.length === 0 ? (
+                        {paginatedRegistrations.length === 0 ? (
                             <Card className="bg-white rounded-xl shadow-lg">
                                 <div className="text-center py-12">
                                     <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -614,7 +795,7 @@ export default function EventParticipants() {
                                 </div>
                             </Card>
                         ) : (
-                            filteredRegistrations.map((registration) => (
+                            paginatedRegistrations.map((registration) => (
                                 <Card key={String(registration._id)} className="bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow">
                                     <div className="p-4 md:p-6">
                                         <div className="flex flex-col sm:flex-row gap-4">
@@ -761,6 +942,21 @@ export default function EventParticipants() {
                                                                     Reject
                                                                 </Button>
                                                             )}
+                                                            <Button
+                                                                variant="danger"
+                                                                size="sm"
+                                                                onClick={() => {
+                                                                    if (
+                                                                        confirm(
+                                                                            `Are you sure you want to delete the registration for "${registration.name}"? This action cannot be undone.`
+                                                                        )
+                                                                    ) {
+                                                                        deleteRegistration(registration._id!.toString());
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Delete
+                                                            </Button>
                                                         </div>
                                                     </div>
 

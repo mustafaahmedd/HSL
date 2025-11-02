@@ -66,6 +66,16 @@ const PlayerSchema = new Schema<IPlayer>(
       type: String,
       enum: ['Platinum', 'Diamond', 'Gold', 'Silver', 'Bronze'],
     },
+    // approvedCategory: {
+    //   type: String,
+    //   enum: ['Platinum', 'Diamond', 'Gold', ''],
+    //   default: '',
+    //   trim: true,
+    // },
+    // approvedIconPlayer: {
+    //   type: Boolean,
+    //   default: false,
+    // },
     
     // Auction Related Fields
     status: {

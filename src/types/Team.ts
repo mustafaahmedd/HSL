@@ -20,19 +20,17 @@ export interface ITeam {
   _id?: Types.ObjectId;
   eventId: Types.ObjectId;
   eventType: 'tournament' | 'competition' | 'auction' | 'activity';
-  name: string;
+  title: string;
   captain?: string;
   entry?: 'paid' | 'unpaid';
   entryAmount?: number;
-  entryPaid?: number;
-  isPaid?: boolean;
   
   // Auction Event Fields
   owner?: string;
   totalPoints?: number;
   pointsSpent?: number;
   pointsLeft?: number;
-  maxPlayers?: number; // Maximum number of players allowed in the team
+  maxPlayers?: number;
   
   // Players array (type depends on eventType)
   players: ITeamPlayer[] | IAuctionTeamPlayer[];

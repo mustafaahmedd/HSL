@@ -482,7 +482,7 @@ export default function AdminDashboard() {
                 <Link key={team._id?.toString()} href={`/admin/teams/${team._id?.toString()}`} className="block">
                   <div className="p-4 bg-gray-50 hover:bg-gray-100 transition-colors rounded border border-gray-200">
                     <div className="flex items-center justify-between">
-                      <h4 className="font-semibold text-gray-900">{team.name}</h4>
+                      <h4 className="font-semibold text-gray-900">{team.title}</h4>
                       <span className="text-xs px-2 py-1 rounded-full bg-green-100 text-green-800">{team.status}</span>
                     </div>
                     <p className="mt-1 text-sm text-gray-600">

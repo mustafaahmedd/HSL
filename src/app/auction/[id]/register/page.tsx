@@ -291,7 +291,7 @@ export default function TeamRegistration() {
                                             { value: '', label: 'Choose a team...' },
                                             ...existingTeams.map(team => ({
                                                 value: team._id?.toString() || '',
-                                                label: `${team.name} (${team.owner})`
+                                                label: `${team.title} (${team.owner})`
                                             }))
                                         ]}
                                     />
@@ -374,7 +374,7 @@ export default function TeamRegistration() {
                                 <tbody className="bg-white divide-y divide-gray-200">
                                     {existingTeams.map((team) => (
                                         <tr key={team._id?.toString()}>
-                                            <td className="px-6 py-4 whitespace-nowrap font-medium">{team.name}</td>
+                                            <td className="px-6 py-4 whitespace-nowrap font-medium">{team.title}</td>
                                             <td className="px-6 py-4 whitespace-nowrap">{team.owner}</td>
                                             <td className="px-6 py-4 whitespace-nowrap">PKR {team.totalPoints?.toLocaleString()}</td>
                                             <td className="px-6 py-4 whitespace-nowrap">

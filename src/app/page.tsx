@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card, Button } from '@/components/ui';
+import { CountdownTimer } from '@/app/api/auth/login/CountdownTimer';
 import { ITournament } from '@/types/Tournament';
 
 // HSL Statistics
@@ -12,6 +13,21 @@ const hslStats = {
   activeMembers: 200
 };
 
+const getNextThursday5PM = () => {
+  const now = new Date();
+  const dayOfWeek = now.getDay(); // Sunday = 0, Thursday = 4
+  let daysUntilThursday = 4 - dayOfWeek;
+  if (daysUntilThursday <= 0) {
+    // If it's Thursday already and past 5 PM, or Friday/Saturday, get next week's Thursday
+    if (dayOfWeek > 4 || (dayOfWeek === 4 && now.getHours() >= 17)) {
+      daysUntilThursday += 7;
+    }
+  }
+  const nextThursday = new Date(now);
+  nextThursday.setDate(now.getDate() + daysUntilThursday);
+  nextThursday.setHours(17, 0, 0, 0); // 5:00 PM
+  return nextThursday.toISOString();
+};
 export default function HSLHome() {
   const [events, setEvents] = useState<any[]>([]);
   const [tournaments, setTournaments] = useState<ITournament[]>([]);
@@ -103,6 +119,27 @@ export default function HSLHome() {
         </div>
       </div>
 
+      {/* Announcements Section */}
+      <div className="py-20 bg-slate-900/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-12">
+            <h2 className="text-4xl font-bold text-white mb-4">Upcoming Announcements</h2>
+            <p className="text-xl text-gray-300">Don't miss out on our next big events!</p>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <CountdownTimer
+              targetDate={getNextThursday5PM()}
+              title="Live Auction"
+              subtitle="Thursday, 5:00 PM at Hikmah Institute Auditorium"
+            />
+            <CountdownTimer
+              targetDate="2024-11-09T07:30:00"
+              title="Tournament Day"
+              subtitle="Sunday, November 9th, 7:30 AM at Futflicks"
+            />
+          </div>
+        </div>
+      </div>
       {/* Statistics Section */}
       <div className="py-20 bg-gradient-to-r from-indigo-900 via-purple-900 to-pink-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

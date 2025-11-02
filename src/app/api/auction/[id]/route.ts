@@ -21,8 +21,8 @@ export async function GET(
 
     const auction = await Auction.findById(auctionId)
       .populate('eventId', 'title description startDate startTime endTime venue images maxParticipants')
-      .populate('players', 'name type category status contactNo photoUrl skillLevel iconPlayerRequest selfAssignedCategory bidPrice role teamId playerId')
-      .populate('teams', 'name owner totalPoints pointsSpent pointsLeft players maxPlayers');
+      .populate('players', 'name status contactNo photoUrl skillLevel iconPlayerRequest selfAssignedCategory playerRole teamId playerId')
+      .populate('teams', 'title owner totalPoints pointsSpent pointsLeft players maxPlayers');
 
     if (!auction) {
       return NextResponse.json(
@@ -200,7 +200,7 @@ export async function PUT(
         }
 
         const registration = await Registration.findById(registrationId);
-        if (!registration || registration.status !== 'available') {
+        if (!registration || registration.teamId) {
           return NextResponse.json(
             { success: false, error: 'Player not available' },
             { status: 400 }
@@ -281,7 +281,6 @@ export async function PUT(
         await bid.save();
 
         // Assign player to team and adjust team budget
-        registration.status = 'sold';
         registration.teamId = team._id as any;
         registration.bidPrice = bid.amount;
         await registration.save();
@@ -322,7 +321,7 @@ export async function PUT(
         // Fetch finalized registrations who requested icon and are available
         const iconRegistrations = await Registration.find({ 
           iconPlayerRequest: true, 
-          status: 'available',
+          teamId: { $exists: false },
           _id: { $in: auction.players }
         });
         const teams = await Team.find({ _id: { $in: auction.teams } });
@@ -345,7 +344,6 @@ export async function PUT(
           // Assign as captain
           pick.role = 'Captain';
           pick.teamId = team._id as any;
-          pick.status = 'sold';
           await pick.save();
 
           // Add zero-price captain to team roster

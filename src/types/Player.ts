@@ -19,6 +19,8 @@ export interface IPlayer {
   // Admin Override Fields
   type?: string; // Batsman, Bowler, Batting All-Rounder, Bowling All-Rounder
   category?: string; // Platinum, Diamond, Gold, etc.
+  // approvedCategory?: string;
+  // approvedIconPlayer?: boolean;
   
   // Auction Related Fields
   status?: string; // available, sold

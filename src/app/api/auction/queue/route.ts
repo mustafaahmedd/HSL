@@ -3,14 +3,14 @@ import dbConnect from '@/lib/mongodb';
 import Registration from '@/models/Registration';
 import { isAuthenticated } from '@/lib/auth';
 
+await dbConnect();
+
 export async function GET(request: NextRequest) {
   if (!await isAuthenticated(request)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    await dbConnect();
-
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category');
 
@@ -21,11 +21,18 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Find all unsold registrations in the specified category
+    // Find all registrations in the specified category that are approved and not yet sold
+    // We need to find registrations that are part of the auction but not yet assigned to a team
     const registrations = await Registration.find({
-      selfAssignedCategory: category,
-      status: 'available'
-    });
+      $or: [
+        { approvedCategory: category },
+        { selfAssignedCategory: category }
+      ],
+      status: 'approved',
+      teamId: { $exists: false } // Not assigned to a team yet
+    }).lean(); // Use lean() for better performance
+    
+    console.log(`Found ${registrations.length} available players in ${category} category`);
 
     // Randomize the order
     const shuffledRegistrations = registrations.sort(() => Math.random() - 0.5);

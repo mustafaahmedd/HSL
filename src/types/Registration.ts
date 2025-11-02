@@ -25,6 +25,10 @@ export interface IRegistration {
   skillLevel?: string;
   iconPlayerRequest?: boolean;
   selfAssignedCategory?: string;
+  
+  approvedCategory?: string;
+  approvedIconPlayer?: boolean;
+  
   playerRole?: string;
   playingStyle?: string;
   position?: string;
