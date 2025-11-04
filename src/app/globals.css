@@ -166,6 +166,10 @@ body {
   }
 }
 
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
 .animate-slide-up {
   animation: slideUp 0.3s ease-out;
 }
@@ -178,6 +182,44 @@ body {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+.animate-bounceIn {
+  animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+@keyframes bounceIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-shuffle {
+  animation: shuffle 1.5s ease-in-out infinite;
+  background-size: 200% 100%;
+}
+
+@keyframes shuffle {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
   }
 }
 
@@ -207,4 +249,19 @@ textarea {
 select,
 textarea {
   color: #0a0a0a;
+}
+
+@keyframes slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out;
 }

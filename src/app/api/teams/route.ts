@@ -4,6 +4,8 @@ import Team from '@/models/Team';
 import Event from '@/models/Event';
 import { isAuthenticated } from '@/lib/auth';
 
+await dbConnect();
+
 // GET /api/teams - Get all teams with filters (admin only)
 export async function GET(request: NextRequest) {
   try {
@@ -11,8 +13,6 @@ export async function GET(request: NextRequest) {
     if (!isAuth) {
       return NextResponse.json({ error: 'Unauthorized to access teams' }, { status: 401 });
     }
-
-    await dbConnect();
 
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
@@ -60,13 +60,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized to create teams' }, { status: 401 });
     }
 
-    await dbConnect();
-
     const body = await request.json();
     const {
       eventId,
       eventType,
-      name,
+      title,
       captain,
       entry,
       entryAmount,
@@ -77,9 +75,9 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!eventId || !eventType || !name) {
+    if (!eventId || !eventType || !title) {
       return NextResponse.json(
-        { error: 'Event ID, event type, and team name are required' },
+        { error: 'Event ID, event type, and team title are required' },
         { status: 400 }
       );
     }
@@ -107,7 +105,7 @@ export async function POST(request: NextRequest) {
     const teamData: any = {
       eventId,
       eventType,
-      name,
+      title,
       status: status || 'active',
       players: players || [],
     };
@@ -147,8 +145,6 @@ export async function PUT(request: NextRequest) {
     if (!isAuth) {
       return NextResponse.json({ error: 'Unauthorized to update teams' }, { status: 401 });
     }
-
-    await dbConnect();
 
     const body = await request.json();
     const { teamId, updates } = body;
@@ -194,8 +190,6 @@ export async function DELETE(request: NextRequest) {
     if (!isAuth) {
       return NextResponse.json({ error: 'Unauthorized to delete teams' }, { status: 401 });
     }
-
-    await dbConnect();
 
     const { searchParams } = new URL(request.url);
     const teamId = searchParams.get('id');

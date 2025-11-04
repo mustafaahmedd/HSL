@@ -49,7 +49,7 @@ const TeamSchema = new Schema<ITeam>(
       enum: ['tournament', 'competition', 'auction', 'activity'],
       required: true,
     },
-    name: {
+    title: {
       type: String,
       required: true,
       trim: true,
@@ -104,7 +104,7 @@ const TeamSchema = new Schema<ITeam>(
 // Indexes for efficient queries
 TeamSchema.index({ eventId: 1, status: 1 });
 TeamSchema.index({ eventId: 1, eventType: 1 });
-TeamSchema.index({ name: 1 });
+TeamSchema.index({ title: 1 });
 
 // Pre-save middleware to calculate pointsLeft for auction teams
 TeamSchema.pre('save', function (next) {
@@ -116,9 +116,9 @@ TeamSchema.pre('save', function (next) {
   next();
 });
 
-// Virtual for team name with event
+// Virtual for team title with event
 TeamSchema.virtual('displayName').get(function(this: any) {
-  return `${this.name}`;
+  return `${this.title}`;
 });
 
 // Method to add player to team

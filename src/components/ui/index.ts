@@ -5,3 +5,4 @@ export * from './Card';
 export * from './NumberInput';
 export * from './Pagination';
 export { default as FileUpload } from './FileUpload';
+export { exportToPDF } from './PDFExport';

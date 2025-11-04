@@ -132,6 +132,7 @@ EventSchema.index({ status: 1, startDate: 1 });
 EventSchema.index({ eventType: 1 });
 EventSchema.index({ isPublished: 1 });
 
-const Event = models.Event || model<IEvent>('Event', EventSchema);
+// const Event = models.Event || model<IEvent>('Event', EventSchema);
+const Event = mongoose.models.Event || mongoose.model<IEvent>('Event', EventSchema);
 
 export default Event;

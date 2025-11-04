@@ -189,7 +189,6 @@ BidSchema.index({ teamId: 1 });
 BidSchema.index({ timestamp: -1 });
 BidSchema.index({ isWinning: 1 });
 
-AuctionSessionSchema.index({ auctionId: 1 });
 AuctionSessionSchema.index({ isActive: 1 });
 
 // Virtual for calculating remaining time

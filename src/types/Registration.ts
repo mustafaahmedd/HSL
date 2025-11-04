@@ -28,6 +28,7 @@ export interface IRegistration {
   
   approvedCategory?: string;
   approvedIconPlayer?: boolean;
+  approvedSkillLevel?: string;
   
   playerRole?: string;
   playingStyle?: string;
@@ -59,6 +60,7 @@ export interface IRegistration {
   approvedBy?: Types.ObjectId;
   approvedAt?: Date;
   rejectionReason?: string;
+  teamId?: Types.ObjectId;
   
   createdAt?: Date;
   updatedAt?: Date;

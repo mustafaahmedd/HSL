@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
 
     const auctions = await Auction.find(query)
       .populate('eventId', 'title description')
-      .populate('players', 'name type category status')
+      .populate('players', 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole teamId playerId')
       .populate('teams', 'name owner totalBudget pointsSpent pointsLeft')
       .sort({ auctionDate: -1 });
 

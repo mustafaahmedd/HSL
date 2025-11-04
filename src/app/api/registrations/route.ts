@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
 
     const registrations = await Registration.find(query)
       .populate('eventId', 'title eventType startDate startTime endTime venue images maxParticipants')
-      .populate('playerId', 'name email phone')
+      .populate('playerId') // Populate all player fields
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
     //   .limit(limit);
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (event.status !== 'upcoming' && event.status !== 'registration') {
+    if (event.status !== 'upcoming' && event.status !== 'live') {
       return NextResponse.json(
         { error: 'Event is not open for registration' },
         { status: 400 }
@@ -173,6 +173,7 @@ export async function PUT(request: NextRequest) {
       registrationId, 
       approvedCategory,
       approvedIconPlayer,
+      approvedSkillLevel,
       status, 
       rejectionReason,
       name,
@@ -234,6 +235,7 @@ export async function PUT(request: NextRequest) {
     // Update admin approved fields
     if (approvedCategory !== undefined) updateData.approvedCategory = approvedCategory;
     if (approvedIconPlayer !== undefined) updateData.approvedIconPlayer = approvedIconPlayer;
+    if (approvedSkillLevel !== undefined) updateData.approvedSkillLevel = approvedSkillLevel;
 
     const registration = await Registration.findByIdAndUpdate(
       registrationId,

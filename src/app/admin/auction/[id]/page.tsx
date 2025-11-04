@@ -48,6 +48,28 @@ export default function AuctionManagement() {
     const [moderatorTeamId, setModeratorTeamId] = useState('');
     const [moderatorBidPrice, setModeratorBidPrice] = useState(0);
 
+    // Captain matching state
+    const [captainMatchingStatus, setCaptainMatchingStatus] = useState<{
+        unassignedTeams: any[];
+        availableCaptains: IRegistration[];
+        isMatching: boolean;
+        matchLog: string[];
+    }>({
+        unassignedTeams: [],
+        availableCaptains: [],
+        isMatching: false,
+        matchLog: []
+    });
+
+    // Store all captains from registrations (not just those in auction.players)
+    const [allApprovedCaptains, setAllApprovedCaptains] = useState<IRegistration[]>([]);
+    const [shuffledCaptainQueue, setShuffledCaptainQueue] = useState<IRegistration[]>([]);
+    const [shuffledTeamQueue, setShuffledTeamQueue] = useState<any[]>([]);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
+    const [lastMatchedPair, setLastMatchedPair] = useState<{ captain: string, team: string } | null>(null);
+    const [isShuffling, setIsShuffling] = useState(false);
+    const [isCaptainSectionExpanded, setIsCaptainSectionExpanded] = useState(true);
+
     useEffect(() => {
         checkAuth();
     }, []);
@@ -64,6 +86,13 @@ export default function AuctionManagement() {
             fetchAvailableData();
         }
     }, [isAuthenticated, auction?.eventId]);
+
+    // Check captain assignments when captains or auction data changes
+    useEffect(() => {
+        if (auction && allApprovedCaptains.length > 0) {
+            checkCaptainAssignments();
+        }
+    }, [auction, allApprovedCaptains]);
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -125,12 +154,19 @@ export default function AuctionManagement() {
                 // console.log("Regs Response: ", regsResponse);
                 const regsData = await regsResponse.json();
                 if (regsData.success) {
+                    // Separate approved captains from regular registrations
+                    const approvedCaptains = regsData.registrations.filter(
+                        (reg: IRegistration) => reg.approvedIconPlayer === true && reg.teamId == null
+                    );
+                    setAllApprovedCaptains(approvedCaptains);
+
                     // Filter out registrations that are already added to the auction
-                    // AND only show approved registrations (status === 'approved')
+                    // AND only show approved registrations (status === 'approved') + approvedIconPlayer === true
                     const alreadyAddedIds = auction?.players?.map((p: any) => p._id?.toString()) || [];
                     const availableRegs = regsData.registrations.filter(
                         (reg: IRegistration) =>
-                            !alreadyAddedIds.includes(reg._id?.toString())
+                            !alreadyAddedIds.includes(reg._id?.toString()) &&
+                            !reg.approvedIconPlayer  // Exclude approved captains
                         // reg.status === 'approved'
                     );
                     setEventRegistrations(availableRegs);
@@ -281,6 +317,49 @@ export default function AuctionManagement() {
         }
     };
 
+    const checkAndProgressCategory = async () => {
+        if (!selectedCategory || !auction) return;
+
+        // Check if current category is complete
+        const remainingPlayers = auction.players.filter((p: any) =>
+            (p.approvedCategory || p.selfAssignedCategory) === selectedCategory &&
+            !p.teamId
+        ).length;
+
+        if (remainingPlayers === 0) {
+            // Category completed! Move to next
+            const categoryOrder = ['Platinum', 'Diamond', 'Gold'];
+            const currentIndex = categoryOrder.indexOf(selectedCategory);
+
+            if (currentIndex < categoryOrder.length - 1) {
+                const nextCategory = categoryOrder[currentIndex + 1];
+                const nextCategoryHasPlayers = auction.players.filter((p: any) =>
+                    (p.approvedCategory || p.selfAssignedCategory) === nextCategory &&
+                    !p.teamId
+                ).length > 0;
+
+                if (nextCategoryHasPlayers) {
+                    // Auto-progress to next category
+                    setCategoryLocked(false);
+                    setQueuedPlayers([]);
+                    setSelectedCategory(nextCategory);
+
+                    // Show notification
+                    setTimeout(() => {
+                        alert(`${selectedCategory} category completed! Moving to ${nextCategory} category.`);
+                        // Auto-lock the next category
+                        fetchCategoryQueue(nextCategory);
+                        setCategoryLocked(true);
+                    }, 500);
+                } else {
+                    alert(`${selectedCategory} category completed! No players in remaining categories. Auction complete!`);
+                }
+            } else {
+                alert('All categories completed! Auction is finished.');
+            }
+        }
+    };
+
     const handleManualAssignment = async () => {
         if (!currentPlayer || !moderatorTeamId || moderatorBidPrice < 0) {
             alert('Please select a team and enter a valid bid price');
@@ -312,13 +391,159 @@ export default function AuctionManagement() {
                 setShowModeratorEdit(false);
                 setModeratorTeamId('');
                 setModeratorBidPrice(0);
-                fetchAuctionData();
+                setCurrentPlayer(null);
+
+                await fetchAuctionData();
+
+                // Check if category is complete and auto-progress
+                setTimeout(() => checkAndProgressCategory(), 500);
             } else {
                 alert(result.error || 'Failed to assign player');
             }
         } catch (error) {
             console.error('Failed to manually assign player:', error);
             alert('Failed to assign player');
+        }
+    };
+
+    const checkCaptainAssignments = () => {
+        if (!auction) return;
+
+        const teamsWithoutCaptains = auction.teams.filter((t: any) => !t.captain);
+        const unassignedCaptains = allApprovedCaptains.filter((captain: IRegistration) =>
+            !captain.teamName
+        );
+
+        setCaptainMatchingStatus({
+            unassignedTeams: teamsWithoutCaptains,
+            availableCaptains: unassignedCaptains,
+            isMatching: false,
+            matchLog: []
+        });
+    };
+
+    // Initialize shuffled queues for matching
+    const handleInitializeMatching = async () => {
+        if (captainMatchingStatus.availableCaptains.length === 0 || captainMatchingStatus.unassignedTeams.length === 0) {
+            alert('No captains or teams available for matching');
+            return;
+        }
+
+        setIsShuffling(true);
+
+        // Simulate shuffling animation for 1.5 seconds
+        await new Promise(resolve => setTimeout(resolve, 4000));
+
+        // Shuffle both lists randomly
+        const shuffledCaptains = [...captainMatchingStatus.availableCaptains].sort(() => Math.random() - 0.5);
+        const shuffledTeams = [...captainMatchingStatus.unassignedTeams].sort(() => Math.random() - 0.5);
+
+        setShuffledCaptainQueue(shuffledCaptains);
+        setShuffledTeamQueue(shuffledTeams);
+        setCaptainMatchingStatus(prev => ({ ...prev, matchLog: [] }));
+        setIsShuffling(false);
+    };
+
+    // Match ONE captain with ONE team
+    const handleMatchNextCaptain = async () => {
+        if (shuffledCaptainQueue.length === 0 || shuffledTeamQueue.length === 0) {
+            alert('No more captains or teams to match! Initialize matching first.');
+            return;
+        }
+
+        setCaptainMatchingStatus(prev => ({ ...prev, isMatching: true }));
+        const token = localStorage.getItem('adminToken');
+
+        try {
+            // Get first captain and team from queues
+            const captain = shuffledCaptainQueue[0];
+            const team = shuffledTeamQueue[0];
+
+            console.log('Matching:', captain.name, 'with', team.title);
+
+            setCaptainMatchingStatus(prev => ({
+                ...prev,
+                matchLog: [...prev.matchLog, `🔄 Matching ${captain.name} with ${team.title}...`]
+            }));
+
+            // Update team with captain
+            const updateTeamResponse = await fetch(`/api/teams/${team._id.toString()}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    captain: captain.name,
+                }),
+            });
+
+            const teamResult = await updateTeamResponse.json();
+
+            if (teamResult.success) {
+                // Update registration with team assignment
+                const updateRegResponse = await fetch('/api/registrations', {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        registrationId: captain._id?.toString(),
+                        teamId: team._id.toString(),
+                        teamName: team.title,
+                    }),
+                });
+
+                const regResult = await updateRegResponse.json();
+
+                if (regResult.success) {
+                    // Update log with success
+                    setCaptainMatchingStatus(prev => {
+                        const newLog = [...prev.matchLog];
+                        newLog[newLog.length - 1] = `✓ ${captain.name} → ${team.title}`;
+                        return {
+                            ...prev,
+                            matchLog: newLog,
+                            isMatching: false,
+                            // IMPORTANT: Remove from actual lists too!
+                            availableCaptains: prev.availableCaptains.filter(c => c._id?.toString() !== captain._id?.toString()),
+                            unassignedTeams: prev.unassignedTeams.filter(t => t._id.toString() !== team._id.toString())
+                        };
+                    });
+
+                    // Remove from queues
+                    setShuffledCaptainQueue(prev => prev.slice(1));
+                    setShuffledTeamQueue(prev => prev.slice(1));
+
+                    // Show success modal
+                    setLastMatchedPair({ captain: captain.name, team: team.title });
+                    setShowSuccessModal(true);
+
+                    // Refresh data to get updated DB state
+                    await fetchAuctionData();
+                    await fetchAvailableData();
+                } else {
+                    setCaptainMatchingStatus(prev => {
+                        const newLog = [...prev.matchLog];
+                        newLog[newLog.length - 1] = `✗ Failed to assign ${captain.name} to ${team.title}`;
+                        return { ...prev, matchLog: newLog, isMatching: false };
+                    });
+                }
+            } else {
+                setCaptainMatchingStatus(prev => {
+                    const newLog = [...prev.matchLog];
+                    newLog[newLog.length - 1] = `✗ Failed to update team`;
+                    return { ...prev, matchLog: newLog, isMatching: false };
+                });
+            }
+        } catch (error) {
+            console.error('Failed to match captain:', error);
+            setCaptainMatchingStatus(prev => ({
+                ...prev,
+                matchLog: [...prev.matchLog, '✗ Error occurred during matching'],
+                isMatching: false
+            }));
         }
     };
 
@@ -357,7 +582,8 @@ export default function AuctionManagement() {
     return (
         <div className="min-h-screen bg-gray-50 py-8">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-8 gap-4">
+                {/* Header */}
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
                     <div>
                         <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">{auction.name}</h1>
                         <p className="text-gray-600">{(auction.eventId as any)?.title}</p>
@@ -368,7 +594,6 @@ export default function AuctionManagement() {
                             }`}>
                             {auction.status.toUpperCase()}
                         </span>
-
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
                         <Link href="/admin/auction">
@@ -386,6 +611,204 @@ export default function AuctionManagement() {
                         </Button>
                     </div>
                 </div>
+
+                {/* Captain Assignment Check */}
+                {auction.status !== 'completed' && (
+                    <Card className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+                        <div className="p-4">
+                            {/* Accordion Header with Toggle Button */}
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                                    <svg className="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
+                                    </svg>
+                                    Captain Assignment Status
+                                </h3>
+                                <button
+                                    onClick={() => setIsCaptainSectionExpanded(!isCaptainSectionExpanded)}
+                                    className="p-2 hover:bg-white hover:bg-opacity-50 rounded-lg transition-all duration-200"
+                                    aria-label={isCaptainSectionExpanded ? "Collapse section" : "Expand section"}
+                                >
+                                    <svg
+                                        className={`w-5 h-5 text-gray-700 transform transition-transform duration-200 ${isCaptainSectionExpanded ? 'rotate-180' : ''
+                                            }`}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </button>
+                            </div>
+
+                            {/* Collapsible Content */}
+                            {isCaptainSectionExpanded && (
+                                <>
+                                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+                                        <div className="bg-white p-3 rounded-lg shadow-sm">
+                                            <div className="text-xs text-gray-600 uppercase font-semibold">Total Captains</div>
+                                            <div className="text-2xl font-bold text-purple-600">{allApprovedCaptains.length}</div>
+                                        </div>
+                                        <div className="bg-white p-3 rounded-lg shadow-sm">
+                                            <div className="text-xs text-gray-600 uppercase font-semibold">Unassigned Captains</div>
+                                            <div className="text-2xl font-bold text-orange-600">
+                                                {captainMatchingStatus.availableCaptains.length}
+                                            </div>
+                                        </div>
+                                        <div className="bg-white p-3 rounded-lg shadow-sm">
+                                            <div className="text-xs text-gray-600 uppercase font-semibold">Assigned Captains</div>
+                                            <div className="text-2xl font-bold text-green-600">
+                                                {allApprovedCaptains.length - captainMatchingStatus.availableCaptains.length}
+                                            </div>
+                                        </div>
+                                        <div className="bg-white p-3 rounded-lg shadow-sm">
+                                            <div className="text-xs text-gray-600 uppercase font-semibold">Total Teams</div>
+                                            <div className="text-2xl font-bold text-gray-900">{auction.teams.length}</div>
+                                        </div>
+                                        <div className="bg-white p-3 rounded-lg shadow-sm">
+                                            <div className="text-xs text-gray-600 uppercase font-semibold">Teams Without Captains</div>
+                                            <div className="text-2xl font-bold text-blue-600">
+                                                {captainMatchingStatus.unassignedTeams.length}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Show unassigned captains and teams side by side */}
+                                    {(captainMatchingStatus.availableCaptains.length > 0 || captainMatchingStatus.unassignedTeams.length > 0) && (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                            {/* Unassigned Captains */}
+                                            {captainMatchingStatus.availableCaptains.length > 0 && (
+                                                <div className="bg-white p-3 rounded-lg shadow-sm border-2 border-purple-200">
+                                                    <h4 className="font-semibold text-sm text-purple-700 mb-2 flex items-center gap-2">
+                                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                                                        </svg>
+                                                        Unassigned Captains ({captainMatchingStatus.availableCaptains.length})
+                                                    </h4>
+                                                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                                                        {captainMatchingStatus.availableCaptains.map((captain) => (
+                                                            <div key={captain._id?.toString()} className="flex items-center gap-2 bg-purple-50 p-2 rounded border border-purple-100 hover:border-purple-300 transition-all">
+                                                                <img
+                                                                    src={captain.photoUrl || '/placeholder-avatar.png'}
+                                                                    alt={captain.name}
+                                                                    className="w-10 h-10 rounded-full object-cover border-2 border-purple-200"
+                                                                />
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="text-sm font-medium text-gray-900 truncate">{captain.name}</div>
+                                                                    <div className="text-xs text-gray-500">
+                                                                        {captain.approvedCategory || captain.selfAssignedCategory || 'N/A'}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Unassigned Teams */}
+                                            {captainMatchingStatus.unassignedTeams.length > 0 && (
+                                                <div className="bg-white p-3 rounded-lg shadow-sm border-2 border-blue-200">
+                                                    <h4 className="font-semibold text-sm text-blue-700 mb-2 flex items-center gap-2">
+                                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clipRule="evenodd" />
+                                                        </svg>
+                                                        Teams Without Captains ({captainMatchingStatus.unassignedTeams.length})
+                                                    </h4>
+                                                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                                                        {captainMatchingStatus.unassignedTeams.map((team) => (
+                                                            <div key={team._id.toString()} className="flex items-center gap-2 bg-blue-50 p-2 rounded border border-blue-100 hover:border-blue-300 transition-all">
+                                                                <div className="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center font-bold text-blue-700">
+                                                                    {team.title.charAt(0)}
+                                                                </div>
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="text-sm font-medium text-gray-900 truncate">{team.title}</div>
+                                                                    <div className="text-xs text-gray-500">
+                                                                        Owner: {team.owner || 'N/A'}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {(captainMatchingStatus.availableCaptains.length > 0 && captainMatchingStatus.unassignedTeams.length > 0) && (
+                                        <div className="space-y-3">
+                                            <div className="flex flex-wrap gap-3">
+                                                <Button
+                                                    variant="secondary"
+                                                    onClick={handleInitializeMatching}
+                                                    disabled={shuffledCaptainQueue.length > 0 || isShuffling}
+                                                    className="flex-1 sm:flex-initial"
+                                                >
+                                                    {isShuffling ? '⏳ Shuffling...' : '🎲 Shuffle & Initialize'}
+                                                </Button>
+                                                <Button
+                                                    variant="primary"
+                                                    onClick={handleMatchNextCaptain}
+                                                    disabled={captainMatchingStatus.isMatching || shuffledCaptainQueue.length === 0}
+                                                    className="flex-1 sm:flex-initial"
+                                                >
+                                                    {captainMatchingStatus.isMatching ? '⏳ Matching...' : `👉 Match Next Captain (${shuffledCaptainQueue.length} left)`}
+                                                </Button>
+                                            </div>
+
+                                            {/* {shuffledCaptainQueue.length > 0 && (
+                                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                                            <p className="text-sm text-blue-800 font-medium">
+                                                🎯 Next Match: <span className="font-bold">{shuffledCaptainQueue[0]?.name}</span> → <span className="font-bold">{shuffledTeamQueue[0]?.title}</span>
+                                            </p>
+                                        </div>
+                                    )} */}
+
+                                            {captainMatchingStatus.matchLog.length > 0 && (
+                                                <div className="bg-gradient-to-br from-gray-50 to-gray-100 p-4 rounded-lg shadow-md border-2 border-gray-200">
+                                                    <h4 className="font-bold text-base text-gray-800 mb-3 flex items-center gap-2">
+                                                        <svg className="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                        </svg>
+                                                        Real-time Matching Log:
+                                                    </h4>
+                                                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                                                        {captainMatchingStatus.matchLog.map((log, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className={`
+                                                            p-3 rounded-md flex items-center gap-2 transition-all duration-300
+                                                            ${log.startsWith('✓') ? 'bg-green-50 border-l-4 border-green-500 text-green-700' :
+                                                                        log.startsWith('✗') ? 'bg-red-50 border-l-4 border-red-500 text-red-700' :
+                                                                            'bg-blue-50 border-l-4 border-blue-500 text-blue-700 animate-pulse'}
+                                                        `}
+                                                            >
+                                                                <span className="text-xl">
+                                                                    {log.startsWith('✓') ? '✓' : log.startsWith('✗') ? '✗' : '🔄'}
+                                                                </span>
+                                                                <span className="font-medium flex-1">
+                                                                    {log.replace(/^[✓✗🔄]\s*/, '')}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {captainMatchingStatus.availableCaptains.length === 0 && captainMatchingStatus.unassignedTeams.length === 0 && allApprovedCaptains.length > 0 && (
+                                        <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-2">
+                                            <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                            </svg>
+                                            <span className="text-green-800 font-medium">All captains have been assigned to teams!</span>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+                        </div>
+                    </Card>
+                )}
 
                 {/* Auction Status and Controls */}
                 {/* <Card title="Auction Status" className="mb-8">
@@ -439,136 +862,347 @@ export default function AuctionManagement() {
                     </div>
                 </Card> */}
 
-                {/* Live Auction Interface */}
-                {auction.status === 'live' && session?.isActive && (
-                    <Card title="Live Auction" className="mb-8">
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                            <div>
-                                <h3 className="text-lg font-semibold mb-4">Current Player</h3>
-                                {currentPlayer ? (
-                                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg border-2 border-blue-200 shadow-md">
-                                        <div className="flex items-center gap-4 mb-4">
-                                            <img
-                                                src={currentPlayer.photoUrl || '/placeholder-avatar.png'}
-                                                alt={currentPlayer.name}
-                                                className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
-                                            />
-                                            <div className="flex-1">
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <h4 className="text-2xl font-bold text-gray-900">{currentPlayer.name}</h4>
-                                                    <span className={`px-3 py-1 text-xs font-bold rounded-full ${(currentPlayer.approvedCategory || currentPlayer.selfAssignedCategory) === 'Platinum' ? 'bg-purple-200 text-purple-900' :
-                                                        (currentPlayer.approvedCategory || currentPlayer.selfAssignedCategory) === 'Diamond' ? 'bg-blue-200 text-blue-900' :
-                                                            (currentPlayer.approvedCategory || currentPlayer.selfAssignedCategory) === 'Gold' ? 'bg-yellow-200 text-yellow-900' :
-                                                                'bg-gray-200 text-gray-900'
-                                                        }`}>
-                                                        {currentPlayer.approvedCategory || currentPlayer.selfAssignedCategory}
-                                                    </span>
-                                                </div>
-                                                {(currentPlayer.approvedIconPlayer || currentPlayer.iconPlayerRequest) && (
-                                                    <span className="inline-block mt-1 px-2 py-0.5 text-xs font-semibold rounded bg-orange-200 text-orange-800">
-                                                        CAPTAIN
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="space-y-2 bg-white bg-opacity-60 p-4 rounded">
-                                            <div className="flex justify-between">
-                                                <span className="text-sm font-medium text-gray-600">Type:</span>
-                                                <span className="text-sm font-semibold text-gray-900">{currentPlayer.playerRole || '-'}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-sm font-medium text-gray-600">Skill Level:</span>
-                                                <span className="text-sm font-semibold text-gray-900">{currentPlayer.skillLevel || '-'}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-sm font-medium text-gray-600">Contact:</span>
-                                                <span className="text-sm font-semibold text-gray-900">{currentPlayer.contactNo}</span>
-                                            </div>
-                                            <div className="flex justify-between border-t pt-2 mt-2">
-                                                <span className="text-sm font-medium text-gray-600">Base Price:</span>
-                                                <span className="text-sm font-bold text-green-700">PKR {(auction.basePrice || 500).toLocaleString()}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-sm font-medium text-gray-600">Increment:</span>
-                                                <span className="text-sm font-bold text-blue-700">PKR {(auction.biddingIncrement || 100).toLocaleString()}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg border">
-                                        <svg className="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                {/* Category Moderation - Moved Before Live Auction */}
+                {auction.status === 'live' && (
+                    <Card className="mb-6">
+                        <div className="p-4">
+                            <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
+                                <svg className="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                                </svg>
+                                Category Moderation
+                            </h3>
+
+                            <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200 mb-4">
+                                <p className="text-sm text-gray-700 font-medium">Categories proceed in order: Platinum → Diamond → Gold</p>
+                                {categoryLocked && (
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-2">
+                                        <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
                                         </svg>
-                                        <p>No player currently being auctioned</p>
-                                    </div>
+                                        Category Locked
+                                    </span>
                                 )}
                             </div>
 
-                            {/* <div>
-                                <h3 className="text-lg font-semibold mb-4">Bidding Status</h3>
-                                <div className="bg-white p-6 rounded-lg border shadow-sm">
-                                    {currentBid ? (
-                                        <div>
-                                            <div className="bg-green-50 p-4 rounded-lg mb-4">
-                                                <div className="text-sm text-gray-600 mb-1">Current Highest Bid:</div>
-                                                <div className="text-3xl font-bold text-green-600">
-                                                    PKR {currentBid.amount.toLocaleString()}
-                                                </div>
-                                            </div>
-                                            <div className="space-y-3 mb-4">
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm text-gray-600">Team:</span>
-                                                    <span className="text-sm font-semibold text-gray-900">{currentBid.bidderInfo.teamName}</span>
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm text-gray-600">Owner:</span>
-                                                    <span className="text-sm font-semibold text-gray-900">{currentBid.bidderInfo.ownerName}</span>
-                                                </div>
-                                            </div>
-                                            <div className="bg-gray-50 p-3 rounded flex justify-between items-center mb-4">
-                                                <span className="text-sm font-medium text-gray-600">Time Remaining:</span>
-                                                <span className={`text-2xl font-bold ${timeRemaining < 30 ? 'text-red-600' : 'text-gray-900'}`}>
-                                                    {formatTime(timeRemaining)}
-                                                </span>
-                                            </div>
-                                            <div className="flex flex-col gap-2">
-                                                <Button
-                                                    variant="primary"
-                                                    className="w-full"
-                                                    onClick={handleFinalizeBid}
-                                                    disabled={timeRemaining > 0}
-                                                >
-                                                    Finalize Bid
-                                                </Button>
-                                                <Button
-                                                    variant="secondary"
-                                                    className="w-full"
-                                                    onClick={() => handleAuctionAction('next_player')}
-                                                >
-                                                    Next Player
-                                                </Button>
-                                            </div>
-                                        </div>
-                                    ) : (
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">Current Category</label>
+                                    <Select
+                                        value={selectedCategory}
+                                        onChange={(e) => {
+                                            if (!categoryLocked) {
+                                                setSelectedCategory(e.target.value);
+                                            }
+                                        }}
+                                        disabled={categoryLocked}
+                                        options={[
+                                            {
+                                                value: 'Platinum',
+                                                label: `Platinum (${auction.players.filter((r: any) => (r.approvedCategory || r.selfAssignedCategory) === 'Platinum' && !r.teamId).length} available)`
+                                            },
+                                            {
+                                                value: 'Diamond',
+                                                label: `Diamond (${auction.players.filter((r: any) => (r.approvedCategory || r.selfAssignedCategory) === 'Diamond' && !r.teamId).length} available)`
+                                            },
+                                            {
+                                                value: 'Gold',
+                                                label: `Gold (${auction.players.filter((r: any) => (r.approvedCategory || r.selfAssignedCategory) === 'Gold' && !r.teamId).length} available)`
+                                            },
+                                        ]}
+                                    />
+                                </div>
+                                <div className="flex gap-2 items-end">
+                                    {!categoryLocked && selectedCategory && (
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => {
+                                                if (selectedCategory) {
+                                                    fetchCategoryQueue(selectedCategory);
+                                                    setCategoryLocked(true);
+                                                }
+                                            }}
+                                            className="flex-1"
+                                        >
+                                            Lock & Load Category
+                                        </Button>
+                                    )}
+                                    {categoryLocked && (
                                         <>
-                                            <div className="text-center py-8 text-gray-500 mb-4">
-                                                No bids yet for this player
-                                            </div>
-                                            {currentPlayer && (
-                                                <Button
-                                                    variant="primary"
-                                                    className="w-full text-gray-900"
-                                                    onClick={() => setShowModeratorEdit(true)}
-                                                >
-                                                    Manual Assignment
-                                                </Button>
-                                            )}
+                                            <Button
+                                                variant="primary"
+                                                onClick={handleNextRandomizedPlayer}
+                                                disabled={!selectedCategory || auction.players.filter((p: any) =>
+                                                    (p.approvedCategory || p.selfAssignedCategory) === selectedCategory &&
+                                                    !p.teamId
+                                                ).length === 0}
+                                                className="flex-1"
+                                            >
+                                                Next Random Player
+                                            </Button>
+                                            <Button
+                                                variant="secondary"
+                                                onClick={() => {
+                                                    setCategoryLocked(false);
+                                                    setQueuedPlayers([]);
+                                                }}
+                                            >
+                                                Unlock
+                                            </Button>
                                         </>
                                     )}
                                 </div>
-                            </div> */}
+                            </div>
+
+                            {selectedCategory && categoryLocked && (
+                                <div className="bg-gray-50 p-3 rounded-lg">
+                                    <div className="flex items-center justify-between text-sm mb-2">
+                                        <span className="text-gray-600 font-medium">{selectedCategory} Progress:</span>
+                                        <span className="font-bold text-gray-900">
+                                            {auction.players.filter((p: any) => (p.approvedCategory || p.selfAssignedCategory) === selectedCategory && p.teamId).length} sold / {auction.players.filter((p: any) => (p.approvedCategory || p.selfAssignedCategory) === selectedCategory).length} total
+                                        </span>
+                                    </div>
+                                    <div className="bg-gray-200 rounded-full h-3 overflow-hidden">
+                                        <div
+                                            className="bg-blue-600 h-full transition-all"
+                                            style={{
+                                                width: `${(auction.players.filter((p: any) => (p.approvedCategory || p.selfAssignedCategory) === selectedCategory && p.teamId).length / Math.max(1, auction.players.filter((p: any) => (p.approvedCategory || p.selfAssignedCategory) === selectedCategory).length)) * 100}%`
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </Card>
+                )}
+
+                {/* Live Auction - Current Player Display with Bidding Controls */}
+                {auction.status === 'live' && currentPlayer && (
+                    <Card className="mb-6">
+                        <div className="p-4">
+                            <h3 className="text-xl font-bold text-gray-900 mb-4">Current Player Auction</h3>
+
+                            {/* Player Display */}
+                            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-lg border-2 border-blue-200 shadow-md mb-4">
+                                <div className="flex items-center gap-4 mb-4">
+                                    <img
+                                        src={currentPlayer.photoUrl || '/placeholder-avatar.png'}
+                                        alt={currentPlayer.name}
+                                        className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-lg"
+                                    />
+                                    <div className="flex-1">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <h4 className="text-2xl font-bold text-gray-900">{currentPlayer.name}</h4>
+                                            <span className={`px-3 py-1 text-xs font-bold rounded-full ${(currentPlayer.approvedCategory || currentPlayer.selfAssignedCategory) === 'Platinum' ? 'bg-purple-200 text-purple-900' :
+                                                (currentPlayer.approvedCategory || currentPlayer.selfAssignedCategory) === 'Diamond' ? 'bg-blue-200 text-blue-900' :
+                                                    (currentPlayer.approvedCategory || currentPlayer.selfAssignedCategory) === 'Gold' ? 'bg-yellow-200 text-yellow-900' :
+                                                        'bg-gray-200 text-gray-900'
+                                                }`}>
+                                                {currentPlayer.approvedCategory || currentPlayer.selfAssignedCategory}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3 bg-white bg-opacity-60 p-4 rounded">
+                                    <div className="flex justify-between">
+                                        <span className="text-sm font-medium text-gray-600">Type:</span>
+                                        <span className="text-sm font-semibold text-gray-900">{currentPlayer.playerRole || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm font-medium text-gray-600">Skill Level:</span>
+                                        <span className="text-sm font-semibold text-gray-900">{currentPlayer.skillLevel || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm font-medium text-gray-600">Base Price:</span>
+                                        <span className="text-sm font-bold text-green-700">PKR {(auction.basePrice || 500).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-sm font-medium text-gray-600">Increment:</span>
+                                        <span className="text-sm font-bold text-blue-700">PKR {(auction.biddingIncrement || 100).toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Bidding Controls */}
+                            <div className="bg-white p-4 border-2 border-gray-200 rounded-lg">
+                                <h4 className="font-semibold text-gray-900 mb-3">Assign Player to Team</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Select Team
+                                        </label>
+                                        <Select
+                                            value={moderatorTeamId}
+                                            onChange={(e) => setModeratorTeamId(e.target.value)}
+                                            options={[
+                                                { value: '', label: 'Select a team' },
+                                                ...auction.teams.map((team: any) => ({
+                                                    value: team._id.toString(),
+                                                    label: `${team.title} (${team.owner}) - PKR ${team.pointsLeft?.toLocaleString()} left`
+                                                }))
+                                            ]}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            Final Bid Price (PKR)
+                                        </label>
+                                        <NumberInput
+                                            value={moderatorBidPrice}
+                                            onChange={(e: any) => setModeratorBidPrice(Number(e.target.value))}
+                                            placeholder={`Min: ${auction.basePrice || 500}`}
+                                            className="text-gray-900"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="flex gap-3 mt-4">
+                                    <Button
+                                        variant="primary"
+                                        onClick={handleManualAssignment}
+                                        disabled={!moderatorTeamId || moderatorBidPrice < (auction.basePrice || 500)}
+                                        className="flex-1"
+                                    >
+                                        Assign Player
+                                    </Button>
+                                    <Button
+                                        variant="secondary"
+                                        onClick={() => {
+                                            setCurrentPlayer(null);
+                                            setModeratorTeamId('');
+                                            setModeratorBidPrice(0);
+                                        }}
+                                    >
+                                        Skip Player
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </Card>
+                )}
+
+                {/* Shuffling Animation Modal */}
+                {isShuffling && (
+                    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fadeIn">
+                        <div className="bg-white rounded-2xl p-8 w-full max-w-md mx-4 shadow-2xl transform animate-bounceIn">
+                            <div className="text-center">
+                                {/* Shuffling Icon Animation */}
+                                <div className="mb-6 relative">
+                                    <div className="flex justify-center items-center gap-4">
+                                        {/* Captains Shuffling */}
+                                        <div className="flex flex-col items-center">
+                                            <div className="relative w-20 h-20 mb-2">
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <div className="w-16 h-16 bg-purple-200 rounded-full flex items-center justify-center animate-pulse">
+                                                        <svg className="w-8 h-8 text-purple-600" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                {/* Shuffling animation dots */}
+                                                <div className="absolute -top-2 -right-2 w-4 h-4 bg-purple-500 rounded-full animate-ping"></div>
+                                                <div className="absolute -bottom-2 -left-2 w-3 h-3 bg-purple-400 rounded-full animate-ping" style={{ animationDelay: '0.3s' }}></div>
+                                            </div>
+                                            <span className="text-xs font-semibold text-purple-700">Captains</span>
+                                        </div>
+
+                                        {/* Arrow */}
+                                        <div className="text-3xl text-gray-400 animate-pulse">⇄</div>
+
+                                        {/* Teams Shuffling */}
+                                        <div className="flex flex-col items-center">
+                                            <div className="relative w-20 h-20 mb-2">
+                                                <div className="absolute inset-0 flex items-center justify-center">
+                                                    <div className="w-16 h-16 bg-blue-200 rounded-full flex items-center justify-center animate-pulse" style={{ animationDelay: '0.15s' }}>
+                                                        <svg className="w-8 h-8 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                                            <path fillRule="evenodd" d="M3 6a3 3 0 013-3h10a1 1 0 01.8 1.6L14.25 8l2.55 3.4A1 1 0 0116 13H6a1 1 0 00-1 1v3a1 1 0 11-2 0V6z" clipRule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                {/* Shuffling animation dots */}
+                                                <div className="absolute -top-2 -right-2 w-4 h-4 bg-blue-500 rounded-full animate-ping" style={{ animationDelay: '0.2s' }}></div>
+                                                <div className="absolute -bottom-2 -left-2 w-3 h-3 bg-blue-400 rounded-full animate-ping" style={{ animationDelay: '0.5s' }}></div>
+                                            </div>
+                                            <span className="text-xs font-semibold text-blue-700">Teams</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Shuffling Message */}
+                                <h2 className="text-2xl font-bold text-gray-800 mb-2">
+                                    Shuffling Matches...
+                                </h2>
+                                <p className="text-gray-600 mb-4">
+                                    Randomizing captain and team pairs for fair distribution
+                                </p>
+
+                                {/* Animated Progress Bar */}
+                                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                                    <div className="bg-gradient-to-r from-purple-500 via-blue-500 to-purple-500 h-full rounded-full animate-shuffle"></div>
+                                </div>
+
+                                <p className="text-xs text-gray-500 mt-4">
+                                    Please wait...
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Success Celebration Modal */}
+                {showSuccessModal && lastMatchedPair && (
+                    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 animate-fadeIn">
+                        <div className="bg-white rounded-2xl p-8 w-full max-w-lg mx-4 shadow-2xl transform animate-bounceIn">
+                            <div className="text-center">
+                                {/* Celebration Icon */}
+                                <div className="mb-6 animate-bounce">
+                                    <span className="text-8xl">🎉</span>
+                                </div>
+
+                                {/* Success Message */}
+                                <h2 className="text-3xl font-bold text-green-600 mb-4">
+                                    Match Successful!
+                                </h2>
+
+                                {/* Matched Pair Details */}
+                                <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 mb-6">
+                                    <div className="flex items-center justify-center gap-4 text-lg">
+                                        <div className="flex-1 text-right">
+                                            <div className="font-bold text-purple-700 text-xl">{lastMatchedPair.captain}</div>
+                                            <div className="text-sm text-gray-600">Captain</div>
+                                        </div>
+
+                                        <div className="text-3xl">→</div>
+
+                                        <div className="flex-1 text-left">
+                                            <div className="font-bold text-blue-700 text-xl">{lastMatchedPair.team}</div>
+                                            <div className="text-sm text-gray-600">Team</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Stats */}
+                                <div className="grid grid-cols-2 gap-4 mb-6">
+                                    <div className="bg-orange-50 rounded-lg p-3">
+                                        <div className="text-2xl font-bold text-orange-600">{shuffledCaptainQueue.length}</div>
+                                        <div className="text-xs text-gray-600">Captains Remaining</div>
+                                    </div>
+                                    <div className="bg-blue-50 rounded-lg p-3">
+                                        <div className="text-2xl font-bold text-blue-600">{shuffledTeamQueue.length}</div>
+                                        <div className="text-xs text-gray-600">Teams Remaining</div>
+                                    </div>
+                                </div>
+
+                                {/* Action Button */}
+                                <Button
+                                    variant="primary"
+                                    onClick={() => setShowSuccessModal(false)}
+                                    className="w-full text-lg py-3"
+                                >
+                                    {shuffledCaptainQueue.length > 0 ? '👉 Continue to Next Match' : '🎊 All Done!'}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {/* Moderator Manual Assignment Modal */}
@@ -634,168 +1268,6 @@ export default function AuctionManagement() {
                     </div>
                 )}
 
-                {auction.status === 'live' && (
-                    <Card title="Category Moderation" className="mb-8">
-                        <div className="flex flex-col gap-6">
-                            {/* Category Selection Header */}
-                            <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                    <div className="flex-1">
-                                        <h4 className="font-semibold text-lg mb-2 text-gray-900">Select Auction Category</h4>
-                                        <p className="text-sm text-gray-600">Categories proceed in order: Platinum → Diamond → Gold</p>
-                                    </div>
-                                    {categoryLocked && (
-                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
-                                            </svg>
-                                            Category Locked
-                                        </span>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                                <div className="lg:col-span-2">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        Current Category
-                                    </label>
-                                    <Select
-                                        value={selectedCategory}
-                                        onChange={(e) => {
-                                            if (!categoryLocked) {
-                                                setSelectedCategory(e.target.value);
-                                            }
-                                        }}
-                                        disabled={categoryLocked}
-                                        options={[
-                                            {
-                                                value: 'Platinum',
-                                                label: `Platinum (${auction.players.filter((r: any) => (r.approvedCategory || r.selfAssignedCategory) === 'Platinum').length} available)`
-                                            },
-                                            {
-                                                value: 'Diamond',
-                                                label: `Diamond (${auction.players.filter((r: any) => (r.approvedCategory || r.selfAssignedCategory) === 'Diamond').length} available)`
-                                            },
-                                            {
-                                                value: 'Gold',
-                                                label: `Gold (${auction.players.filter((r: any) => (r.approvedCategory || r.selfAssignedCategory) === 'Gold').length} available)`
-                                            },
-                                        ]}
-                                    />
-                                </div>
-                                <div className="flex flex-col gap-2 justify-end">
-                                    {!categoryLocked && selectedCategory && (
-                                        <Button
-                                            variant="secondary"
-                                            onClick={() => {
-                                                if (selectedCategory) {
-                                                    fetchCategoryQueue(selectedCategory);
-                                                    setCategoryLocked(true);
-                                                }
-                                            }}
-                                            className="w-full"
-                                        >
-                                            Lock & Load Category
-                                        </Button>
-                                    )}
-                                    {categoryLocked && (
-                                        <Button
-                                            variant="secondary"
-                                            onClick={() => {
-                                                const availableCount = auction.players.filter((p: any) => (p.selfAssignedCategory || p.category) === selectedCategory && p.status === 'available').length;
-                                                if (availableCount === 0 || confirm('Are you sure you want to unlock and change category?')) {
-                                                    setCategoryLocked(false);
-                                                    setQueuedPlayers([]);
-                                                }
-                                            }}
-                                            className="w-full"
-                                        >
-                                            Unlock Category
-                                        </Button>
-                                    )}
-                                </div>
-                            </div>
-
-                            {selectedCategory && categoryLocked && (
-                                <>
-                                    <div className="bg-white p-4 rounded-lg border">
-                                        <div className="flex items-center justify-between mb-4">
-                                            <div>
-                                                <h5 className="font-semibold text-gray-900">{selectedCategory} Category</h5>
-                                                <p className="text-sm text-gray-600 mt-1">
-                                                    {auction.players.filter((p: any) =>
-                                                        (p.approvedCategory || p.selfAssignedCategory) === selectedCategory &&
-                                                        p.status === 'approved' &&
-                                                        !p.teamId
-                                                    ).length} players available
-                                                </p>
-                                            </div>
-                                            <Button
-                                                variant="primary"
-                                                onClick={handleNextRandomizedPlayer}
-                                                disabled={!selectedCategory || auction.players.filter((p: any) =>
-                                                    (p.approvedCategory || p.selfAssignedCategory) === selectedCategory &&
-                                                    p.status === 'approved' &&
-                                                    !p.teamId
-                                                ).length === 0}
-                                                className="px-6"
-                                            >
-                                                Next Random Player
-                                            </Button>
-                                        </div>
-                                        <div className="bg-gray-50 p-3 rounded">
-                                            <div className="flex items-center justify-between text-sm">
-                                                <span className="text-gray-600">Progress:</span>
-                                                <span className="font-semibold text-gray-900">
-                                                    {auction.players.filter((p: any) => (p.approvedCategory || p.selfAssignedCategory) === selectedCategory && p.teamId).length} sold / {auction.players.filter((p: any) => (p.approvedCategory || p.selfAssignedCategory) === selectedCategory).length} total
-                                                </span>
-                                            </div>
-                                            <div className="mt-2 bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                                                <div
-                                                    className="bg-blue-600 h-full transition-all"
-                                                    style={{
-                                                        width: `${(auction.players.filter((p: any) => (p.approvedCategory || p.selfAssignedCategory) === selectedCategory && p.teamId).length / Math.max(1, auction.players.filter((p: any) => (p.approvedCategory || p.selfAssignedCategory) === selectedCategory).length)) * 100}%`
-                                                    }}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="overflow-x-auto">
-                                        <h5 className="font-semibold mb-3">Available Players in {selectedCategory}</h5>
-                                        <table className="min-w-full divide-y divide-gray-200">
-                                            <thead className="bg-gray-50">
-                                                <tr>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Skill</th>
-                                                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="bg-white divide-y divide-gray-200">
-                                                {auction.players
-                                                    .filter((p: any) => (p.approvedCategory || p.selfAssignedCategory) === selectedCategory)
-                                                    .map((p: any) => (
-                                                        <tr key={p._id?.toString()} className={p.teamId ? 'bg-gray-50 opacity-60' : ''}>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">{p.name}</td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{p.playerRole || '-'}</td>
-                                                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-600">{p.skillLevel || '-'}</td>
-                                                            <td className="px-4 py-3 whitespace-nowrap">
-                                                                <span className={`px-2 py-1 text-xs font-medium rounded-full ${p.teamId ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                                                    {p.teamId ? 'sold' : 'available'}
-                                                                </span>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </Card>
-                )}
 
                 {/* Stats */}
                 {stats && (
@@ -907,7 +1379,7 @@ export default function AuctionManagement() {
                         </div>
                     )}
 
-                    <div className="overflow-x-auto max-h-[600px] overflow-y-auto border border-gray-200 rounded-lg">
+                    {/* <div className="overflow-x-auto max-h-[600px] overflow-y-auto border border-gray-200 rounded-lg">
                         <table className="min-w-full divide-y divide-gray-200">
                             <thead className="bg-gray-50 sticky top-0 z-10">
                                 <tr>
@@ -957,12 +1429,12 @@ export default function AuctionManagement() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{player.contactNo}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{player.playerRole}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${(player.approvedCategory || player.selfAssignedCategory || player.category) === 'Platinum' ? 'bg-purple-100 text-purple-800' :
-                                                (player.approvedCategory || player.selfAssignedCategory || player.category) === 'Diamond' ? 'bg-blue-100 text-blue-800' :
-                                                    (player.approvedCategory || player.selfAssignedCategory || player.category) === 'Gold' ? 'bg-yellow-100 text-yellow-800' :
+                                            <span className={`px-2 py-1 text-xs rounded-full font-medium ${(player.approvedCategory) === 'Platinum' ? 'bg-purple-100 text-purple-800' :
+                                                (player.approvedCategory) === 'Diamond' ? 'bg-blue-100 text-blue-800' :
+                                                    (player.approvedCategory) === 'Gold' ? 'bg-yellow-100 text-yellow-800' :
                                                         'bg-gray-100 text-gray-800'
                                                 }`}>
-                                                {player.approvedCategory || player.selfAssignedCategory || player.category}
+                                                {player.approvedCategory || player.selfAssignedCategory}
                                             </span>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{player.skillLevel || '-'}</td>
@@ -989,7 +1461,7 @@ export default function AuctionManagement() {
                                 ))}
                             </tbody>
                         </table>
-                    </div>
+                    </div> */}
                 </Card>
 
                 {/* Team Management */}
@@ -1048,6 +1520,7 @@ export default function AuctionManagement() {
                                 <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-4 py-3">
                                     <h3 className="text-white font-semibold text-lg text-gray-900">{team.title}</h3>
                                     <p className="text-blue-100 text-sm mt-0.5"><strong>Owner: {team.owner}</strong></p>
+                                    <p className="text-blue-100 text-sm mt-0.5"><strong>Captain: {team.captain}</strong></p>
                                 </div>
                                 <div className="p-4 space-y-3">
                                     <div className="flex justify-between items-center pb-2 border-b border-gray-100">
@@ -1065,7 +1538,7 @@ export default function AuctionManagement() {
                                     <div className="pt-3 border-t border-gray-100">
                                         <div className="flex justify-between items-center">
                                             <span className="text-xs text-gray-500">Players</span>
-                                            <span className="text-xs font-medium text-blue-600">{(team.players || []).length} / {team.maxPlayers}</span>
+                                            <span className="text-xs font-medium text-blue-600">{(team.players || []).length} {team.captain ? ' + Captain' : ''} / {team.maxPlayers}</span>
                                         </div>
                                         <div className="mt-2 bg-gray-200 rounded-full h-2 overflow-hidden">
                                             <div

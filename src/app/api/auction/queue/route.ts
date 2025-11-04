@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         { selfAssignedCategory: category }
       ],
       status: 'approved',
-      teamId: { $exists: false } // Not assigned to a team yet
+      teamId: { $exists: false }
     }).lean(); // Use lean() for better performance
     
     console.log(`Found ${registrations.length} available players in ${category} category`);

@@ -21,8 +21,8 @@ export async function GET(
 
     const auction = await Auction.findById(auctionId)
       .populate('eventId', 'title description startDate startTime endTime venue images maxParticipants')
-      .populate('players', 'name status contactNo photoUrl skillLevel iconPlayerRequest selfAssignedCategory playerRole teamId playerId')
-      .populate('teams', 'title owner totalPoints pointsSpent pointsLeft players maxPlayers');
+      .populate('players', 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole teamId playerId')
+      .populate('teams', 'title owner totalPoints pointsSpent pointsLeft players maxPlayers captain');
 
     if (!auction) {
       return NextResponse.json(
@@ -30,6 +30,7 @@ export async function GET(
         { status: 404 }
       );
     }
+    console.log(auction.players.length);
 
     // Get auction session
     const session = await AuctionSession.findOne({ auctionId })
@@ -39,8 +40,8 @@ export async function GET(
 
     // Get all bids for this auction
     const bids = await Bid.find({ auctionId })
-      .populate('playerId', 'name type category')
-      .populate('teamId', 'name owner')
+      .populate('playerId', 'name type approvedCategory approvedIconPlayer')
+      .populate('teamId', 'title owner totalBudget pointsSpent pointsLeft')
       .sort({ timestamp: -1 });
 
     // Get auction statistics

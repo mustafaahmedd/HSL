@@ -4,10 +4,11 @@ import Event from '@/models/Event';
 import { isAuthenticated } from '@/lib/auth';
 import { extractFiles, saveFiles } from '@/lib/upload';
 
+await dbConnect();
+
 // GET - Fetch all events (public)
 export async function GET(request: NextRequest) {
   try {
-    await dbConnect();
 
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status');
@@ -53,8 +54,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await dbConnect();
-
     const formData = await request.formData();
     
     // Extract form fields
@@ -143,8 +142,6 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    await dbConnect();
-
     const { eventId, updates } = await request.json();
     console.log('Update event data:', { eventId, updates });
 
@@ -190,8 +187,6 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
-    await dbConnect();
-
     const { eventId } = await request.json();
 
     if (!eventId) {

@@ -16,15 +16,12 @@ export default function CreateTeam() {
     const [teamForm, setTeamForm] = useState({
         eventId: '',
         eventType: '',
-        name: '',
-        // Regular event fields
+        title: '',
         captain: '',
         entry: 'unpaid',
         entryAmount: 0,
-        // Auction event fields
         owner: '',
         totalPoints: 0,
-        // Common
         status: 'active',
     });
 
@@ -98,7 +95,7 @@ export default function CreateTeam() {
             const teamData: any = {
                 eventId: teamForm.eventId,
                 eventType: teamForm.eventType,
-                name: teamForm.name,
+                title: teamForm.title,
                 status: teamForm.status,
                 players: selectedPlayers.map(regId => ({ registrationId: regId })),
             };
@@ -196,8 +193,8 @@ export default function CreateTeam() {
                                         <div className="space-y-4">
                                             <Input
                                                 label="Team Name"
-                                                value={teamForm.name}
-                                                onChange={(e) => setTeamForm({ ...teamForm, name: e.target.value })}
+                                                value={teamForm.title}
+                                                onChange={(e) => setTeamForm({ ...teamForm, title: e.target.value })}
                                                 required
                                                 placeholder="Enter team name"
                                             />
@@ -212,6 +209,12 @@ export default function CreateTeam() {
                                                         required
                                                         placeholder="Enter owner name"
                                                     />
+                                                    <Input
+                                                        label="Team Captain"
+                                                        value={teamForm.captain}
+                                                        onChange={(e) => setTeamForm({ ...teamForm, captain: e.target.value })}
+                                                        placeholder="Enter captain name"
+                                                    />
                                                     <NumberInput
                                                         label="Total Points/Budget"
                                                         value={teamForm.totalPoints}
@@ -225,12 +228,12 @@ export default function CreateTeam() {
                                             {/* Regular event fields */}
                                             {teamForm.eventType !== 'auction' && (
                                                 <>
-                                                    <Input
+                                                    {/* <Input
                                                         label="Team Captain"
                                                         value={teamForm.captain}
                                                         onChange={(e) => setTeamForm({ ...teamForm, captain: e.target.value })}
                                                         placeholder="Enter captain name"
-                                                    />
+                                                    /> */}
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <Select
                                                             label="Entry Status"

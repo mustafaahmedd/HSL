@@ -280,7 +280,7 @@ export default function PublicAuctionView() {
                                                 { value: '', label: 'Choose your team...' },
                                                 ...teams.map(team => ({
                                                     value: team._id?.toString() || '',
-                                                    label: `${team.name} (${team.owner}) - PKR ${team.pointsLeft?.toLocaleString() || 0} remaining`
+                                                    label: `${team.title} (${team.owner}) - PKR ${team.pointsLeft?.toLocaleString() || 0} remaining`
                                                 }))
                                             ]}
                                         />
@@ -436,7 +436,7 @@ export default function PublicAuctionView() {
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className="text-lg font-bold">#{index + 1}</span>
                                                 </td>
-                                                <td className="px-6 py-4 whitespace-nowrap font-medium">{team.name}</td>
+                                                <td className="px-6 py-4 whitespace-nowrap font-medium">{team.title}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap">{team.owner}</td>
                                                 <td className="px-6 py-4 whitespace-nowrap">
                                                     <span className={`font-medium ${team.pointsLeft && team.pointsLeft > 5000 ? 'text-green-600' :

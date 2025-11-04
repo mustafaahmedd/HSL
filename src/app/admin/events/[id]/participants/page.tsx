@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Card, Button, Input, Select, Pagination } from '@/components/ui';
+import { Card, Button, Input, Select, Pagination, exportToPDF } from '@/components/ui';
 import { IRegistration } from '@/types/Registration';
 import { IEvent } from '@/types/Event';
 
@@ -106,9 +106,27 @@ export default function EventParticipants() {
 
     // Filter states
     const [filterIconPlayer, setFilterIconPlayer] = useState<string>('all');
-    const [filterPreviousLeague, setFilterPreviousLeague] = useState<string>('all');
     const [filterCategory, setFilterCategory] = useState<string>('all');
-    const [filterPlayBoth, setFilterPlayBoth] = useState<string>('all'); // all, yes, no
+    const [filterStatus, setFilterStatus] = useState<string>('approved');
+    const [filterPaymentStatus, setFilterPaymentStatus] = useState<string>('all');
+    const [filterCourseType, setFilterCourseType] = useState<string>('all'); // Darse Nizami or Courses
+    const [filterYear, setFilterYear] = useState<string>('all');
+    const [filterTimings, setFilterTimings] = useState<string>('all');
+
+    // Filter panel collapse state
+    const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+
+    // Export modal state
+    const [exportModalOpen, setExportModalOpen] = useState(false);
+    const [exportFilters, setExportFilters] = useState({
+        iconPlayer: filterIconPlayer,
+        courseType: filterCourseType,
+        year: filterYear,
+        timings: filterTimings,
+        status: filterStatus,
+        paymentStatus: filterPaymentStatus,
+        category: filterCategory,
+    });
 
     // Pagination states
     const [currentPage, setCurrentPage] = useState(1);
@@ -129,6 +147,19 @@ export default function EventParticipants() {
 
     // Derived counts
     const totalPaidRegistrants = registrations.filter(reg => (reg.isPaid === true) || (reg.paymentStatus === 'paid')).length;
+
+    // Get unique values for filters
+    const uniqueYears = Array.from(new Set(
+        registrations
+            .map(reg => reg.darseNizamiYear || reg.currentCourseYear)
+            .filter(Boolean)
+    )).sort();
+
+    const uniqueTimings = Array.from(new Set(
+        registrations
+            .map(reg => reg.timings)
+            .filter(Boolean)
+    )).sort();
 
     useEffect(() => {
         checkAuth();
@@ -157,36 +188,58 @@ export default function EventParticipants() {
         // Icon player filter
         if (filterIconPlayer !== 'all') {
             filtered = filtered.filter(reg => {
-                const isIconPlayer = reg.iconPlayerRequest || false;
+                const isIconPlayer = reg.approvedIconPlayer || false;
                 return filterIconPlayer === 'yes' ? isIconPlayer : !isIconPlayer;
             });
         }
 
-        // Previous league filter
-        if (filterPreviousLeague !== 'all') {
+        // Course Type filter (Darse Nizami vs Courses)
+        if (filterCourseType !== 'all') {
             filtered = filtered.filter(reg => {
-                const playedPrevious = reg.playedPreviousLeague || false;
-                return filterPreviousLeague === 'yes' ? playedPrevious : !playedPrevious;
+                const courseEnrolled = reg.courseEnrolled?.toLowerCase() || '';
+                if (filterCourseType === 'darse_nizami') {
+                    return courseEnrolled.includes('darse') || courseEnrolled.includes('nizami') || reg.darseNizamiYear;
+                } else if (filterCourseType === 'courses') {
+                    return !courseEnrolled.includes('darse') && !courseEnrolled.includes('nizami') && !reg.darseNizamiYear && reg.courseEnrolled;
+                }
+                return true;
             });
         }
 
-        // Play Both filter
-        if (filterPlayBoth !== 'all') {
+        // Year filter
+        if (filterYear !== 'all') {
             filtered = filtered.filter(reg => {
-                const playBoth = reg.playBothTournaments || false;
-                return filterPlayBoth === 'yes' ? playBoth : !playBoth;
+                const year = reg.darseNizamiYear || reg.currentCourseYear || '';
+                return year.toString() === filterYear;
             });
+        }
+
+        // Timings filter
+        if (filterTimings !== 'all') {
+            filtered = filtered.filter(reg => {
+                return reg.timings?.toLowerCase() === filterTimings.toLowerCase();
+            });
+        }
+
+        // Status filter
+        if (filterStatus !== 'all') {
+            filtered = filtered.filter(reg => reg.status === filterStatus);
+        }
+
+        // Payment status filter
+        if (filterPaymentStatus !== 'all') {
+            filtered = filtered.filter(reg => reg.paymentStatus === filterPaymentStatus);
         }
 
         // Category filter
         if (filterCategory !== 'all') {
-            filtered = filtered.filter(reg => reg.selfAssignedCategory === filterCategory);
+            filtered = filtered.filter(reg => reg.approvedCategory === filterCategory || reg.selfAssignedCategory === filterCategory);
         }
 
         setFilteredRegistrations(filtered);
         // Reset to first page when filters change
         setCurrentPage(1);
-    }, [searchTerm, filterIconPlayer, filterPreviousLeague, filterPlayBoth, filterCategory, registrations]);
+    }, [searchTerm, filterIconPlayer, filterCourseType, filterYear, filterTimings, filterStatus, filterPaymentStatus, filterCategory, registrations]);
 
     // Calculate pagination
     const totalPages = Math.ceil(filteredRegistrations.length / itemsPerPage);
@@ -317,7 +370,7 @@ export default function EventParticipants() {
             setSelectedRegistrationIds([]);
             setShowBulkActions(false);
             fetchEventRegistrations();
-            alert(`Successfully ${newStatus} ${selectedRegistrationIds.length} registration(s)`);
+            // alert(`Successfully ${newStatus} ${selectedRegistrationIds.length} registration(s)`);
         } catch (error) {
             console.error('Failed to update registrations:', error);
             alert('Failed to update registrations');
@@ -361,6 +414,9 @@ export default function EventParticipants() {
             playingStyle: registration.playingStyle || '',
             position: registration.position || '',
             playBothTournaments: registration.playBothTournaments || false,
+            approvedCategory: registration.approvedCategory || '',
+            approvedIconPlayer: registration.approvedIconPlayer || false,
+            approvedSkillLevel: registration.approvedSkillLevel || '2',
         });
     };
 
@@ -399,6 +455,62 @@ export default function EventParticipants() {
                 {status}
             </span>
         );
+    };
+
+    const handleExportPDF = () => {
+        // Apply export filters to get filtered data
+        let exportData = registrations;
+
+        // Apply same filters as display filters
+        if (exportFilters.iconPlayer !== 'all') {
+            exportData = exportData.filter(reg => {
+                const isIconPlayer = reg.iconPlayerRequest || false;
+                return exportFilters.iconPlayer === 'yes' ? isIconPlayer : !isIconPlayer;
+            });
+        }
+
+        if (exportFilters.courseType !== 'all') {
+            exportData = exportData.filter(reg => {
+                const courseEnrolled = reg.courseEnrolled?.toLowerCase() || '';
+                if (exportFilters.courseType === 'darse_nizami') {
+                    return courseEnrolled.includes('darse') || courseEnrolled.includes('nizami') || reg.darseNizamiYear;
+                } else if (exportFilters.courseType === 'courses') {
+                    return !courseEnrolled.includes('darse') && !courseEnrolled.includes('nizami') && !reg.darseNizamiYear && reg.courseEnrolled;
+                }
+                return true;
+            });
+        }
+
+        if (exportFilters.year !== 'all') {
+            exportData = exportData.filter(reg => {
+                const year = reg.darseNizamiYear || reg.currentCourseYear || '';
+                return year.toString() === exportFilters.year;
+            });
+        }
+
+        if (exportFilters.timings !== 'all') {
+            exportData = exportData.filter(reg => {
+                return reg.timings?.toLowerCase() === exportFilters.timings.toLowerCase();
+            });
+        }
+
+        if (exportFilters.status !== 'all') {
+            exportData = exportData.filter(reg => reg.status === exportFilters.status);
+        }
+
+        if (exportFilters.paymentStatus !== 'all') {
+            exportData = exportData.filter(reg => reg.paymentStatus === exportFilters.paymentStatus);
+        }
+
+        if (exportFilters.category !== 'all') {
+            exportData = exportData.filter(reg =>
+                reg.approvedCategory === exportFilters.category || reg.selfAssignedCategory === exportFilters.category
+            );
+        }
+
+        // Generate PDF
+        exportToPDF(exportData, event?.title || 'Participants', exportFilters);
+        setExportModalOpen(false);
     };
 
     const getPaymentStatusBadge = (status: string, isPaid: boolean) => {
@@ -499,74 +611,175 @@ export default function EventParticipants() {
                                 </div>
                             </div>
 
-                            {/* View Toggle - Right Corner */}
-                            <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-1 self-start sm:self-auto">
-                                <button
-                                    onClick={() => setViewMode('card')}
-                                    className={`p-2 rounded transition-colors ${viewMode === 'card' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-                                        }`}
-                                    title="Card View"
+                            {/* View Toggle and Export Button */}
+                            <div className="flex items-center gap-2 self-start sm:self-auto">
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+                                    className="flex items-center gap-2"
                                 >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                                     </svg>
-                                </button>
-                                <button
-                                    onClick={() => setViewMode('table')}
-                                    className={`p-2 rounded transition-colors ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
-                                        }`}
-                                    title="Table View"
+                                    Filters
+                                    <svg
+                                        className={`w-4 h-4 transform transition-transform duration-200 ${isFilterPanelOpen ? 'rotate-180' : ''
+                                            }`}
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    size="sm"
+                                    onClick={() => {
+                                        // Sync export filters with current filters
+                                        setExportFilters({
+                                            iconPlayer: filterIconPlayer,
+                                            courseType: filterCourseType,
+                                            year: filterYear,
+                                            timings: filterTimings,
+                                            status: filterStatus,
+                                            paymentStatus: filterPaymentStatus,
+                                            category: filterCategory,
+                                        });
+                                        setExportModalOpen(true);
+                                    }}
+                                    className="flex items-center gap-2"
                                 >
-                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
-                                </button>
+                                    Export PDF
+                                </Button>
+                                <div className="flex items-center gap-2 bg-gray-50 rounded-lg p-1">
+                                    <button
+                                        onClick={() => setViewMode('card')}
+                                        className={`p-2 rounded transition-colors ${viewMode === 'card' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                                            }`}
+                                        title="Card View"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                                        </svg>
+                                    </button>
+                                    <button
+                                        onClick={() => setViewMode('table')}
+                                        className={`p-2 rounded transition-colors ${viewMode === 'table' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-100'
+                                            }`}
+                                        title="Table View"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                                        </svg>
+                                    </button>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Filters */}
-                        <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
-                            <select
-                                value={filterIconPlayer}
-                                onChange={(e) => setFilterIconPlayer(e.target.value)}
-                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                            >
-                                <option value="all">Icon Player: All</option>
-                                <option value="yes">Icon Player: Yes</option>
-                                <option value="no">Icon Player: No</option>
-                            </select>
+                        {/* Collapsible Filters Panel */}
+                        {isFilterPanelOpen && (
+                            <div className="pt-4 border-t border-gray-200 space-y-3 animate-slide-down">
+                                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
+                                    <select
+                                        value={filterIconPlayer}
+                                        onChange={(e) => setFilterIconPlayer(e.target.value)}
+                                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    >
+                                        <option value="all">Icon Player: All</option>
+                                        <option value="yes">Icon Player: Yes</option>
+                                        <option value="no">Icon Player: No</option>
+                                    </select>
 
-                            <select
-                                value={filterPreviousLeague}
-                                onChange={(e) => setFilterPreviousLeague(e.target.value)}
-                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                            >
-                                <option value="all">Previous League: All</option>
-                                <option value="yes">Previous League: Yes</option>
-                                <option value="no">Previous League: No</option>
-                            </select>
+                                    <select
+                                        value={filterCourseType}
+                                        onChange={(e) => setFilterCourseType(e.target.value)}
+                                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    >
+                                        <option value="all">Course Type: All</option>
+                                        <option value="darse_nizami">Darse Nizami</option>
+                                        <option value="courses">Courses</option>
+                                    </select>
 
-                            <select
-                                value={filterPlayBoth}
-                                onChange={(e) => setFilterPlayBoth(e.target.value)}
-                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                            >
-                                <option value="all">Play Both: All</option>
-                                <option value="yes">Play Both: Yes</option>
-                                <option value="no">Play Both: No</option>
-                            </select>
+                                    <select
+                                        value={filterYear}
+                                        onChange={(e) => setFilterYear(e.target.value)}
+                                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    >
+                                        <option value="all">Year: All</option>
+                                        {uniqueYears.map(year => (
+                                            <option key={year} value={year}>{year}</option>
+                                        ))}
+                                    </select>
 
-                            <select
-                                value={filterCategory}
-                                onChange={(e) => setFilterCategory(e.target.value)}
-                                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
-                            >
-                                <option value="all">Category: All</option>
-                                <option value="Platinum">Platinum</option>
-                                <option value="Diamond">Diamond</option>
-                                <option value="Gold">Gold</option>
-                            </select>
-                        </div>
+                                    <select
+                                        value={filterTimings}
+                                        onChange={(e) => setFilterTimings(e.target.value)}
+                                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    >
+                                        <option value="all">Timings: All</option>
+                                        {uniqueTimings.map(timing => (
+                                            <option key={timing} value={timing}>{timing}</option>
+                                        ))}
+                                    </select>
+
+                                    <select
+                                        value={filterStatus}
+                                        onChange={(e) => setFilterStatus(e.target.value)}
+                                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    >
+                                        <option value="all">Status: All</option>
+                                        <option value="approved">Status: Approved</option>
+                                        <option value="rejected">Status: Rejected</option>
+                                        <option value="pending">Status: Pending</option>
+                                    </select>
+
+                                    <select
+                                        value={filterPaymentStatus}
+                                        onChange={(e) => setFilterPaymentStatus(e.target.value)}
+                                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    >
+                                        <option value="all">Payment: All</option>
+                                        <option value="paid">Payment: Paid</option>
+                                        <option value="pending">Payment: Pending</option>
+                                    </select>
+
+                                    <select
+                                        value={filterCategory}
+                                        onChange={(e) => setFilterCategory(e.target.value)}
+                                        className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                                    >
+                                        <option value="all">Category: All</option>
+                                        <option value="Platinum">Platinum</option>
+                                        <option value="Diamond">Diamond</option>
+                                        <option value="Gold">Gold</option>
+                                    </select>
+                                </div>
+
+                                {/* Clear Filters Button */}
+                                <div className="flex justify-end">
+                                    <Button
+                                        variant="secondary"
+                                        size="sm"
+                                        onClick={() => {
+                                            setFilterIconPlayer('all');
+                                            setFilterCourseType('all');
+                                            setFilterYear('all');
+                                            setFilterTimings('all');
+                                            setFilterStatus('approved');
+                                            setFilterPaymentStatus('all');
+                                            setFilterCategory('all');
+                                        }}
+                                    >
+                                        Clear All Filters
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -592,6 +805,52 @@ export default function EventParticipants() {
                                 >
                                     Reject Selected
                                 </Button>
+                                <select
+                                    className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    defaultValue=""
+                                    onChange={async (e) => {
+                                        const selectedValue = e.target.value;
+                                        if (!selectedValue) return;
+                                        for (const regId of selectedRegistrationIds) {
+                                            await updateRegistration(regId, {
+                                                approvedSkillLevel: selectedValue,
+                                            });
+                                        }
+                                        setSelectedRegistrationIds([]);
+                                        fetchEventRegistrations();
+
+                                        e.target.value = "";
+                                    }}
+                                >
+                                    <option value="">Bulk Skill Level</option>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                </select>
+                                <select
+                                    className="px-2 py-1 border rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                    defaultValue=""
+                                    onChange={async (e) => {
+                                        const selectedCategory = e.target.value;
+                                        if (!selectedCategory) return;
+                                        for (const regId of selectedRegistrationIds) {
+                                            await updateRegistration(regId, {
+                                                approvedCategory: selectedCategory,
+                                            });
+                                        }
+                                        setSelectedRegistrationIds([]);
+                                        fetchEventRegistrations();
+                                        // alert(`Category updated for participants`);
+                                        e.target.value = "";
+                                    }}
+                                >
+                                    <option value="">Bulk Category</option>
+                                    <option value="Platinum">Platinum</option>
+                                    <option value="Diamond">Diamond</option>
+                                    <option value="Gold">Gold</option>
+                                </select>
                                 <Button
                                     variant="secondary"
                                     size="sm"
@@ -606,20 +865,22 @@ export default function EventParticipants() {
 
                 {/* Pagination */}
                 {filteredRegistrations.length > 0 && (
-                    <div className="mb-4">
-                        <Pagination
-                            currentPage={currentPage}
-                            totalPages={totalPages}
-                            totalItems={filteredRegistrations.length}
-                            itemsPerPage={itemsPerPage}
-                            onPageChange={setCurrentPage}
-                            onItemsPerPageChange={(newItemsPerPage) => {
-                                setItemsPerPage(newItemsPerPage);
-                                setCurrentPage(1);
-                            }}
-                            showItemsPerPage={true}
-                            itemsPerPageOptions={[10, 20, 50, 100]}
-                        />
+                    <div className="mb-4 w-full overflow-x-auto">
+                        <div className="min-w-[320px]">
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                totalItems={filteredRegistrations.length}
+                                itemsPerPage={itemsPerPage}
+                                onPageChange={setCurrentPage}
+                                onItemsPerPageChange={(newItemsPerPage) => {
+                                    setItemsPerPage(newItemsPerPage);
+                                    setCurrentPage(1);
+                                }}
+                                showItemsPerPage={true}
+                                itemsPerPageOptions={[10, 20, 50, 100]}
+                            />
+                        </div>
                     </div>
                 )}
 
@@ -684,19 +945,14 @@ export default function EventParticipants() {
                                                                     Icon Player
                                                                 </span>
                                                             )}
-                                                            {registration.playedPreviousLeague && (
+                                                            {/* {registration.playedPreviousLeague && (
                                                                 <span className="px-2 py-0.5 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
                                                                     Previous League
                                                                 </span>
-                                                            )}
+                                                            )} */}
                                                             {registration.selfAssignedCategory && (
                                                                 <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                                                    {registration.selfAssignedCategory}
-                                                                </span>
-                                                            )}
-                                                            {registration.playBothTournaments && (
-                                                                <span className="px-2 py-0.5 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
-                                                                    Play Both
+                                                                    {registration.approvedCategory || registration.selfAssignedCategory}
                                                                 </span>
                                                             )}
                                                         </div>
@@ -729,9 +985,13 @@ export default function EventParticipants() {
                                                         {registration.playingStyle && (
                                                             <div>{registration.playingStyle}</div>
                                                         )}
-                                                        {registration.skillLevel && (
-                                                            <SkillLevelDisplay skillLevel={registration.skillLevel} />
-                                                        )}
+                                                        <SkillLevelDisplay
+                                                            skillLevel={
+                                                                registration.approvedSkillLevel
+                                                                    ? registration.approvedSkillLevel
+                                                                    : registration.skillLevel || ''
+                                                            }
+                                                        />
                                                     </div>
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap align-top">
@@ -755,7 +1015,6 @@ export default function EventParticipants() {
                                                         <Button size="sm" variant={registration.status === 'pending' ? 'secondary' : 'primary'} onClick={() => handleMarkPayment(registration)}>
                                                             {registration.isPaid ? 'Paid' : 'Pay'}
                                                         </Button>
-
                                                     </div>
                                                     <div className="flex gap-1 mt-2">
                                                         <Button
@@ -773,6 +1032,15 @@ export default function EventParticipants() {
                                                         >
                                                             Delete
                                                         </Button>
+                                                        {/* <select
+                                                            value={editForm.approvedCategory || ''}
+                                                            onChange={(e) => setEditForm({ ...editForm, approvedCategory: e.target.value })}
+                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        >
+                                                            <option value="Platinum">Platinum</option>
+                                                            <option value="Diamond">Diamond</option>
+                                                            <option value="Gold">Gold</option>
+                                                        </select> */}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -799,8 +1067,23 @@ export default function EventParticipants() {
                                 <Card key={String(registration._id)} className="bg-white rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow">
                                     <div className="p-4 md:p-6">
                                         <div className="flex flex-col sm:flex-row gap-4">
-                                            {/* Profile Picture */}
-                                            <div className="flex-shrink-0 self-center">
+                                            {/* Profile Picture with Checkbox positioned absolutely at the card's top-left, responsive */}
+                                            <div className="flex-shrink-0 self-center relative">
+                                                {/* Checkbox positioned top-left of the card, not just the image */}
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedRegistrationIds.includes(registration._id!.toString())}
+                                                    onChange={() => toggleSelectRegistration(registration._id!.toString())}
+                                                    className="
+                                                        absolute
+                                                        left-[-18px] top-[-18px] 
+                                                        sm:left-[-14px] sm:top-[-14px]
+                                                        md:left-[-25px] md:top-[-75px]
+                                                        z-20 w-5 h-5 text-blue-600 border border-gray-300 bg-white rounded focus:ring-blue-500 shadow
+                                                        transition-all
+                                                    "
+                                                    style={{}}
+                                                />
                                                 <img
                                                     src={registration.photoUrl}
                                                     alt={registration.name}
@@ -852,7 +1135,7 @@ export default function EventParticipants() {
                                                                         <span className="font-semibold">Role:</span>
                                                                         <span>{registration.playerRole}</span>
                                                                         {registration.skillLevel && (
-                                                                            <SkillLevelDisplay skillLevel={registration.skillLevel} />
+                                                                            <SkillLevelDisplay skillLevel={registration.approvedSkillLevel || registration.skillLevel} />
                                                                         )}
                                                                     </div>
                                                                 )}
@@ -870,26 +1153,21 @@ export default function EventParticipants() {
                                                         )}
 
                                                         {/* Additional Info Badges */}
-                                                        {(registration.iconPlayerRequest || registration.playedPreviousLeague || registration.selfAssignedCategory || registration.playBothTournaments) && (
+                                                        {(registration.iconPlayerRequest || registration.playedPreviousLeague || registration.selfAssignedCategory) && (
                                                             <div className="flex flex-wrap gap-2 mt-2">
-                                                                {registration.iconPlayerRequest && (
+                                                                {registration.approvedIconPlayer && (
                                                                     <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
                                                                         Icon Player
                                                                     </span>
                                                                 )}
-                                                                {registration.playedPreviousLeague && (
+                                                                {/* {registration.playedPreviousLeague && (
                                                                     <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
                                                                         Previous League
                                                                     </span>
-                                                                )}
+                                                                )} */}
                                                                 {registration.selfAssignedCategory && (
                                                                     <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                                                        {registration.selfAssignedCategory}
-                                                                    </span>
-                                                                )}
-                                                                {registration.playBothTournaments && (
-                                                                    <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs font-medium rounded-full">
-                                                                        Play Both
+                                                                        {registration.approvedCategory || registration.selfAssignedCategory}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -920,13 +1198,13 @@ export default function EventParticipants() {
                                                             >
                                                                 Edit Details
                                                             </Button>
-                                                            <Button
+                                                            {/* <Button
                                                                 variant={registration.isPaid ? "secondary" : "primary"}
                                                                 size="sm"
                                                                 onClick={() => handleMarkPayment(registration)}
                                                             >
                                                                 {registration.isPaid ? 'Edit Payment' : 'Mark Paid'}
-                                                            </Button>
+                                                            </Button> */}
                                                             {registration.status === 'pending' && (
                                                                 <Button
                                                                     variant="secondary"
@@ -957,6 +1235,38 @@ export default function EventParticipants() {
                                                             >
                                                                 Delete
                                                             </Button>
+                                                            <select
+                                                                value={registration.approvedSkillLevel || registration.skillLevel}
+                                                                onChange={async (e) => {
+                                                                    await updateRegistration(registration._id!.toString(), {
+                                                                        approvedSkillLevel: e.target.value,
+                                                                    });
+                                                                }}
+                                                                className="ml-2 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                                style={{ width: 60 }}
+                                                            >
+                                                                <option value="1">1</option>
+                                                                <option value="2">2</option>
+                                                                <option value="3">3</option>
+                                                                <option value="4">4</option>
+                                                                <option value="5">5</option>
+                                                            </select>
+                                                            <div className="flex items-center">
+                                                                <select
+                                                                    value={registration.approvedCategory || registration.selfAssignedCategory}
+                                                                    onChange={async (e) => {
+                                                                        await updateRegistration(registration._id!.toString(), {
+                                                                            approvedCategory: e.target.value,
+                                                                        });
+                                                                    }}
+                                                                    className="ml-2 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                                                                    style={{ width: 100 }}
+                                                                >
+                                                                    <option value="Platinum">Platinum</option>
+                                                                    <option value="Diamond">Diamond</option>
+                                                                    <option value="Gold">Gold</option>
+                                                                </select>
+                                                            </div>
                                                         </div>
                                                     </div>
 
@@ -1183,15 +1493,46 @@ export default function EventParticipants() {
                                         )}
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                Play Both
+                                                Approved Category
                                             </label>
                                             <select
-                                                value={editForm.playBothTournaments ? 'yes' : 'no'}
-                                                onChange={(e) => setEditForm({ ...editForm, playBothTournaments: e.target.value === 'yes' })}
+                                                value={editForm.approvedCategory || ''}
+                                                onChange={(e) => setEditForm({ ...editForm, approvedCategory: e.target.value })}
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             >
-                                                <option value="yes">Yes</option>
+                                                <option value="Platinum">Platinum</option>
+                                                <option value="Diamond">Diamond</option>
+                                                <option value="Gold">Gold</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Approved for Icon Player
+                                            </label>
+                                            <select
+                                                value={editForm.approvedIconPlayer ? 'yes' : 'no'}
+                                                onChange={(e) => setEditForm({ ...editForm, approvedIconPlayer: e.target.value === 'yes' })}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
                                                 <option value="no">No</option>
+                                                <option value="yes">Yes</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Approved Skill Level
+                                            </label>
+                                            <select
+                                                value={editForm.approvedSkillLevel || ''}
+                                                onChange={(e) => setEditForm({ ...editForm, approvedSkillLevel: e.target.value })}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="">Select Level</option>
+                                                <option value="1">★☆☆☆☆ (1 Star)</option>
+                                                <option value="2">★★☆☆☆ (2 Stars)</option>
+                                                <option value="3">★★★☆☆ (3 Stars)</option>
+                                                <option value="4">★★★★☆ (4 Stars)</option>
+                                                <option value="5">★★★★★ (5 Stars)</option>
                                             </select>
                                         </div>
                                     </div>
@@ -1247,6 +1588,157 @@ export default function EventParticipants() {
                     isOpen={selectedImage !== null}
                     onClose={() => setSelectedImage(null)}
                 />
+
+                {/* Export Modal */}
+                {exportModalOpen && (
+                    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                        <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+                            <div className="mt-3">
+                                <h3 className="text-lg font-medium text-gray-900 mb-4">Export Participants to PDF</h3>
+                                <p className="text-sm text-gray-600 mb-4">Choose filters to apply for export:</p>
+
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Icon Player
+                                            </label>
+                                            <select
+                                                value={exportFilters.iconPlayer}
+                                                onChange={(e) => setExportFilters({ ...exportFilters, iconPlayer: e.target.value })}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="all">All</option>
+                                                <option value="yes">Yes</option>
+                                                <option value="no">No</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Course Type
+                                            </label>
+                                            <select
+                                                value={exportFilters.courseType}
+                                                onChange={(e) => setExportFilters({ ...exportFilters, courseType: e.target.value })}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="all">All</option>
+                                                <option value="darse_nizami">Darse Nizami</option>
+                                                <option value="courses">Courses</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Year
+                                            </label>
+                                            <select
+                                                value={exportFilters.year}
+                                                onChange={(e) => setExportFilters({ ...exportFilters, year: e.target.value })}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="all">All</option>
+                                                {uniqueYears.map(year => (
+                                                    <option key={year} value={year}>{year}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Timings
+                                            </label>
+                                            <select
+                                                value={exportFilters.timings}
+                                                onChange={(e) => setExportFilters({ ...exportFilters, timings: e.target.value })}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="all">All</option>
+                                                {uniqueTimings.map(timing => (
+                                                    <option key={timing} value={timing}>{timing}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Status
+                                            </label>
+                                            <select
+                                                value={exportFilters.status}
+                                                onChange={(e) => setExportFilters({ ...exportFilters, status: e.target.value })}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="all">All</option>
+                                                <option value="approved">Approved</option>
+                                                <option value="rejected">Rejected</option>
+                                                <option value="pending">Pending</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Payment Status
+                                            </label>
+                                            <select
+                                                value={exportFilters.paymentStatus}
+                                                onChange={(e) => setExportFilters({ ...exportFilters, paymentStatus: e.target.value })}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="all">All</option>
+                                                <option value="paid">Paid</option>
+                                                <option value="pending">Pending</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Category
+                                            </label>
+                                            <select
+                                                value={exportFilters.category}
+                                                onChange={(e) => setExportFilters({ ...exportFilters, category: e.target.value })}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="all">All</option>
+                                                <option value="Platinum">Platinum</option>
+                                                <option value="Diamond">Diamond</option>
+                                                <option value="Gold">Gold</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-2 justify-end pt-4 border-t">
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => {
+                                                setExportModalOpen(false);
+                                                setExportFilters({
+                                                    iconPlayer: filterIconPlayer,
+                                                    courseType: filterCourseType,
+                                                    year: filterYear,
+                                                    timings: filterTimings,
+                                                    status: filterStatus,
+                                                    paymentStatus: filterPaymentStatus,
+                                                    category: filterCategory,
+                                                });
+                                            }}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            variant="primary"
+                                            onClick={handleExportPDF}
+                                        >
+                                            Export PDF
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
             </div>
         </div>
     );

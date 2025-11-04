@@ -97,6 +97,10 @@ const RegistrationSchema = new Schema<IRegistration>(
       type: Boolean,
       default: false,
     },
+    approvedSkillLevel: {
+      type: String,
+      trim: true,
+    },
     playerRole: {
       type: String,
       trim: true,
@@ -170,6 +174,10 @@ const RegistrationSchema = new Schema<IRegistration>(
     rejectionReason: {
       type: String,
       trim: true,
+    },
+    teamId: {
+      type: Schema.Types.ObjectId,
+      ref: 'Team',
     },
   },
   {

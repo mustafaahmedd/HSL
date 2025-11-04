@@ -134,7 +134,7 @@ export default function TeamsView() {
             <Card key={team._id?.toString()} className="overflow-hidden">
               {/* Team Header */}
               <div className="bg-blue-600 text-white p-6">
-                <h2 className="text-2xl font-bold mb-2">{team.name}</h2>
+                <h2 className="text-2xl font-bold mb-2">{team.title}</h2>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <span className="opacity-75">Owner:</span>

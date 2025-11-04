@@ -60,3 +60,59 @@ export async function GET(
   }
 }
 
+// PUT /api/teams/[id] - Update team (e.g., assign captain)
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // Check authentication
+    const isAuth = await isAuthenticated(request);
+    if (!isAuth) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    await dbConnect();
+    const { id } = await params;
+    const body = await request.json();
+
+    // Find the team
+    const team = await Team.findById(id);
+    if (!team) {
+      return NextResponse.json(
+        { error: 'Team not found' },
+        { status: 404 }
+      );
+    }
+
+    // Update team fields
+    if (body.captain !== undefined) {
+      team.captain = body.captain;
+    }
+    if (body.status !== undefined) {
+      team.status = body.status;
+    }
+
+    await team.save();
+
+    return NextResponse.json({
+      success: true,
+      team,
+      message: 'Team updated successfully',
+    });
+  } catch (error: any) {
+    console.error('Update team error:', error);
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Failed to update team', 
+        message: error.message 
+      },
+      { status: 500 }
+    );
+  }
+}
+

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, Button, Select, Input } from '@/components/ui';
+import { Card, Button, Select, Input, NumberInput } from '@/components/ui';
 import { ITeam } from '@/types/Team';
 import { IEvent } from '@/types/Event';
 
@@ -12,6 +12,10 @@ export default function AdminTeams() {
     const [allTeams, setAllTeams] = useState<ITeam[]>([]);
     const [events, setEvents] = useState<IEvent[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Edit modal state
+    const [editingTeam, setEditingTeam] = useState<ITeam | null>(null);
+    const [editForm, setEditForm] = useState<any>({});
 
     // Filters
     const [filters, setFilters] = useState({
@@ -118,6 +122,73 @@ export default function AdminTeams() {
         }
 
         setTeams(filtered);
+    };
+
+    const handleEditTeam = (team: any) => {
+        setEditingTeam(team);
+        setEditForm({
+            title: team.title || '',
+            owner: team.owner || '',
+            totalPoints: team.totalPoints || 0,
+            maxPlayers: team.maxPlayers || 0,
+            captain: team.captain || '',
+            entry: team.entry || 'unpaid',
+            entryAmount: team.entryAmount || 0,
+            status: team.status || 'active',
+        });
+    };
+
+    const handleUpdateTeam = async () => {
+        if (!editingTeam) return;
+
+        try {
+            const token = localStorage.getItem('adminToken');
+            const updates: any = {
+                title: editForm.title,
+                status: editForm.status,
+            };
+
+            // Add captain for all teams
+            updates.captain = editForm.captain || '';
+
+            // Add event type specific fields
+            if (editingTeam.eventType === 'auction') {
+                updates.owner = editForm.owner;
+                updates.totalPoints = editForm.totalPoints;
+                updates.maxPlayers = editForm.maxPlayers;
+                // Recalculate pointsLeft
+                updates.pointsLeft = editForm.totalPoints - (editingTeam.pointsSpent || 0);
+            } else {
+                updates.entry = editForm.entry;
+                updates.entryAmount = editForm.entryAmount;
+            }
+
+            const response = await fetch('/api/teams', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    teamId: editingTeam._id?.toString(),
+                    updates,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+                alert('Team updated successfully');
+                setEditingTeam(null);
+                setEditForm({});
+                fetchTeams(); // Refresh teams list
+            } else {
+                alert('Failed to update team: ' + data.error);
+            }
+        } catch (error) {
+            console.error('Update team error:', error);
+            alert('Failed to update team');
+        }
     };
 
     const handleDeleteTeam = async (teamId: string) => {
@@ -272,7 +343,7 @@ export default function AdminTeams() {
                                 <div className="p-6">
                                     <div className="flex justify-between items-start mb-4">
                                         <div>
-                                            <h3 className="text-xl font-bold text-gray-900 mb-2">{team.name}</h3>
+                                            <h3 className="text-xl font-bold text-gray-900 mb-2">{team.title}</h3>
                                             <p className="text-sm text-gray-600 mb-2">
                                                 {team.eventId?.title || 'Unknown Event'}
                                             </p>
@@ -289,6 +360,9 @@ export default function AdminTeams() {
                                             <>
                                                 <p className="text-sm text-gray-700">
                                                     <strong>Owner:</strong> {team.owner}
+                                                </p>
+                                                <p className="text-sm text-gray-700">
+                                                    <strong>Captain:</strong> {team.captain}
                                                 </p>
                                                 <p className="text-sm text-gray-700">
                                                     <strong>Points:</strong> {team.pointsLeft?.toLocaleString()} / {team.totalPoints?.toLocaleString()}
@@ -323,6 +397,12 @@ export default function AdminTeams() {
                                         </Button>
                                         <Button
                                             variant="secondary"
+                                            onClick={() => handleEditTeam(team)}
+                                        >
+                                            Edit
+                                        </Button>
+                                        <Button
+                                            variant="danger"
                                             onClick={() => handleDeleteTeam(team._id?.toString())}
                                         >
                                             Delete
@@ -345,6 +425,148 @@ export default function AdminTeams() {
                             </Button>
                         </div>
                     </Card>
+                )}
+
+                {/* Edit Team Modal */}
+                {editingTeam && (
+                    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+                        <div className="relative top-10 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
+                            <div className="mt-3">
+                                <h3 className="text-xl font-bold text-gray-900 mb-4">Edit Team</h3>
+
+                                <div className="space-y-4">
+                                    {/* Team Title */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Team Title *
+                                        </label>
+                                        <Input
+                                            value={editForm.title || ''}
+                                            onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
+                                            placeholder="Enter team title"
+                                            className="text-gray-900"
+                                        />
+                                    </div>
+
+                                    {/* Captain Field - Available for all teams */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Captain
+                                        </label>
+                                        <Input
+                                            value={editForm.captain || ''}
+                                            onChange={(e) => setEditForm({ ...editForm, captain: e.target.value })}
+                                            placeholder="Enter captain name"
+                                            className="text-gray-900"
+                                        />
+                                    </div>
+
+                                    {/* Event Type Specific Fields */}
+                                    {editingTeam.eventType === 'auction' ? (
+                                        <>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Owner *
+                                                </label>
+                                                <Input
+                                                    value={editForm.owner || ''}
+                                                    onChange={(e) => setEditForm({ ...editForm, owner: e.target.value })}
+                                                    placeholder="Enter owner name"
+                                                    className="text-gray-900"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Total Points *
+                                                </label>
+                                                <NumberInput
+                                                    value={editForm.totalPoints || 0}
+                                                    onChange={(e: any) => setEditForm({ ...editForm, totalPoints: Number(e.target.value) })}
+                                                    placeholder="Enter total points"
+                                                    className="text-gray-900"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Max Players
+                                                </label>
+                                                <NumberInput
+                                                    value={editForm.maxPlayers || 0}
+                                                    onChange={(e: any) => setEditForm({ ...editForm, maxPlayers: Number(e.target.value) })}
+                                                    placeholder="Enter max players"
+                                                    className="text-gray-900"
+                                                />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Entry Status
+                                                </label>
+                                                <Select
+                                                    value={editForm.entry || 'unpaid'}
+                                                    onChange={(e) => setEditForm({ ...editForm, entry: e.target.value })}
+                                                    options={[
+                                                        { value: 'paid', label: 'Paid' },
+                                                        { value: 'unpaid', label: 'Unpaid' },
+                                                    ]}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Entry Amount (PKR)
+                                                </label>
+                                                <NumberInput
+                                                    value={editForm.entryAmount || 0}
+                                                    onChange={(e: any) => setEditForm({ ...editForm, entryAmount: Number(e.target.value) })}
+                                                    placeholder="Enter entry amount"
+                                                    className="text-gray-900"
+                                                />
+                                            </div>
+                                        </>
+                                    )}
+
+                                    {/* Status */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                                            Status
+                                        </label>
+                                        <Select
+                                            value={editForm.status || 'active'}
+                                            onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                                            options={[
+                                                { value: 'active', label: 'Active' },
+                                                { value: 'inactive', label: 'Inactive' },
+                                                { value: 'eliminated', label: 'Eliminated' },
+                                                { value: 'winner', label: 'Winner' },
+                                            ]}
+                                        />
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex gap-2 justify-end pt-4 border-t">
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => {
+                                                setEditingTeam(null);
+                                                setEditForm({});
+                                            }}
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button
+                                            variant="primary"
+                                            onClick={handleUpdateTeam}
+                                            disabled={!editForm.title || (editingTeam.eventType === 'auction' && !editForm.owner)}
+                                        >
+                                            Save Changes
+                                        </Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 )}
             </div>
         </div>
