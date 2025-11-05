@@ -412,6 +412,14 @@ export async function PUT(
             continue;
           }
 
+          // Validate team category quota for assign_icon_players
+          const playerCategory = pick.approvedCategory || 'Gold';
+          const quotaValidation = validateTeamCategoryQuota(team, playerCategory);
+          
+          if (!quotaValidation.valid) {
+            continue; // Skip this team and try the next one
+          }
+
           // Assign as captain
           pick.role = 'Captain';
           pick.teamId = team._id as any;

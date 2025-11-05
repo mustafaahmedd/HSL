@@ -1374,12 +1374,51 @@ export default function AuctionManagement() {
                                         onChange={(e) => setModeratorTeamId(e.target.value)}
                                         options={[
                                             { value: '', label: 'Select a team' },
-                                            ...auction.teams.map((team: any) => ({
-                                                value: team._id.toString(),
-                                                label: `${team.title} (${team.owner})`
-                                            }))
+                                            ...auction.teams.map((team: any) => {
+                                                // Calculate category counts for this team
+                                                const categoryCount = {
+                                                    Platinum: 0,
+                                                    Diamond: 0,
+                                                    Gold: 0
+                                                };
+
+                                                if (team.players) {
+                                                    team.players.forEach((player: any) => {
+                                                        const category = player.category || player.approvedCategory;
+                                                        if (category && categoryCount.hasOwnProperty(category)) {
+                                                            categoryCount[category as keyof typeof categoryCount]++;
+                                                        }
+                                                    });
+                                                }
+
+                                                // Check if current player can be added to this team
+                                                const playerCategory = currentPlayer?.approvedCategory || 'Gold';
+                                                const quotaValidation = validateTeamCategoryQuota(team, playerCategory);
+                                                const canAddPlayer = quotaValidation.valid;
+
+                                                return {
+                                                    value: team._id.toString(),
+                                                    label: `${team.title} (${team.owner}) - 🟣${categoryCount.Platinum}/1 🔵${categoryCount.Diamond}/2 🟡${categoryCount.Gold} ${!canAddPlayer ? '❌ QUOTA FULL' : ''}`,
+                                                    disabled: !canAddPlayer
+                                                };
+                                            })
                                         ]}
                                     />
+                                    {moderatorTeamId && (() => {
+                                        const selectedTeam = auction.teams.find((t: any) => t._id.toString() === moderatorTeamId);
+                                        if (selectedTeam) {
+                                            const playerCategory = currentPlayer?.approvedCategory || 'Gold';
+                                            const quotaValidation = validateTeamCategoryQuota(selectedTeam, playerCategory);
+                                            if (!quotaValidation.valid) {
+                                                return (
+                                                    <div className="mt-2 p-2 bg-red-100 border border-red-300 rounded text-sm text-red-700">
+                                                        ⚠️ {quotaValidation.message}
+                                                    </div>
+                                                );
+                                            }
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-2">
