@@ -269,7 +269,7 @@ export default function AdminRegistrations() {
                                                 {new Date(registration?.createdAt || '').toLocaleDateString()}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
-                                                {getStatusBadge(registration.status)}
+                                                {getStatusBadge(registration.status || '')}
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="flex flex-col gap-1">

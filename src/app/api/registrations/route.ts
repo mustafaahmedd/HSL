@@ -22,11 +22,14 @@ export async function GET(request: NextRequest) {
 
     let query: any = {};
     if (eventId) query.eventId = eventId;
-    if (status) query.status = status;
+    if (status) 
+      query.status = status
+    else 
+      query.status = { $eq: 'approved' };
 
     const registrations = await Registration.find(query)
       .populate('eventId', 'title eventType startDate startTime endTime venue images maxParticipants')
-      .populate('playerId') // Populate all player fields
+      .populate('playerId')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
     //   .limit(limit);
@@ -171,6 +174,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { 
       registrationId, 
+      auctionStatus,
       approvedCategory,
       approvedIconPlayer,
       approvedSkillLevel,
@@ -183,6 +187,7 @@ export async function PUT(request: NextRequest) {
       currentCourseYear,
       timings,
       teamName,
+      teamId,
       specialRequirements,
       paymentStatus,
       amountPaid,
@@ -217,6 +222,7 @@ export async function PUT(request: NextRequest) {
     if (currentCourseYear !== undefined) updateData.currentCourseYear = currentCourseYear;
     if (timings !== undefined) updateData.timings = timings;
     if (teamName !== undefined) updateData.teamName = teamName;
+    if (teamId !== undefined) updateData.teamId = teamId;
     if (specialRequirements !== undefined) updateData.specialRequirements = specialRequirements;
     
     // Update payment information
@@ -231,6 +237,7 @@ export async function PUT(request: NextRequest) {
     if (playerRole !== undefined) updateData.playerRole = playerRole;
     if (playingStyle !== undefined) updateData.playingStyle = playingStyle;
     if (position !== undefined) updateData.position = position;
+    if (auctionStatus !== undefined) updateData.auctionStatus = auctionStatus;
 
     // Update admin approved fields
     if (approvedCategory !== undefined) updateData.approvedCategory = approvedCategory;

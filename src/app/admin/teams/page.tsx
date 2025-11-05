@@ -130,6 +130,8 @@ export default function AdminTeams() {
             title: team.title || '',
             owner: team.owner || '',
             totalPoints: team.totalPoints || 0,
+            pointsSpent: team.pointsSpent || 0,
+            pointsLeft: team.pointsLeft || 0,
             maxPlayers: team.maxPlayers || 0,
             captain: team.captain || '',
             entry: team.entry || 'unpaid',
@@ -156,8 +158,9 @@ export default function AdminTeams() {
                 updates.owner = editForm.owner;
                 updates.totalPoints = editForm.totalPoints;
                 updates.maxPlayers = editForm.maxPlayers;
-                // Recalculate pointsLeft
-                updates.pointsLeft = editForm.totalPoints - (editingTeam.pointsSpent || 0);
+                // Allow manual editing of pointsSpent and pointsLeft
+                updates.pointsSpent = editForm.pointsSpent || 0;
+                updates.pointsLeft = editForm.pointsLeft || 0;
             } else {
                 updates.entry = editForm.entry;
                 updates.entryAmount = editForm.entryAmount;
@@ -178,7 +181,7 @@ export default function AdminTeams() {
             const data = await response.json();
 
             if (data.success) {
-                alert('Team updated successfully');
+
                 setEditingTeam(null);
                 setEditForm({});
                 fetchTeams(); // Refresh teams list
@@ -494,6 +497,36 @@ export default function AdminTeams() {
                                                     value={editForm.maxPlayers || 0}
                                                     onChange={(e: any) => setEditForm({ ...editForm, maxPlayers: Number(e.target.value) })}
                                                     placeholder="Enter max players"
+                                                    className="text-gray-900"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Points Spent
+                                                </label>
+                                                <NumberInput
+                                                    value={editForm.pointsSpent || 0}
+                                                    onChange={(e: any) => {
+                                                        const spent = Number(e.target.value);
+                                                        const total = editForm.totalPoints || 0;
+                                                        setEditForm({
+                                                            ...editForm,
+                                                            pointsSpent: spent,
+                                                            pointsLeft: total - spent // Auto-calculate but allow manual override
+                                                        });
+                                                    }}
+                                                    placeholder="Enter points spent"
+                                                    className="text-gray-900"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                    Points Left (can be manually adjusted)
+                                                </label>
+                                                <NumberInput
+                                                    value={editForm.pointsLeft || 0}
+                                                    onChange={(e: any) => setEditForm({ ...editForm, pointsLeft: Number(e.target.value) })}
+                                                    placeholder="Enter points left"
                                                     className="text-gray-900"
                                                 />
                                             </div>

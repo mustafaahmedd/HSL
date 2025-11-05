@@ -233,7 +233,7 @@ export default function EventParticipants() {
 
         // Category filter
         if (filterCategory !== 'all') {
-            filtered = filtered.filter(reg => reg.approvedCategory === filterCategory || reg.selfAssignedCategory === filterCategory);
+            filtered = filtered.filter(reg => reg.approvedCategory === filterCategory);
         }
 
         setFilteredRegistrations(filtered);
@@ -504,7 +504,7 @@ export default function EventParticipants() {
 
         if (exportFilters.category !== 'all') {
             exportData = exportData.filter(reg =>
-                reg.approvedCategory === exportFilters.category || reg.selfAssignedCategory === exportFilters.category
+                reg.approvedCategory === exportFilters.category
             );
         }
 
@@ -940,7 +940,7 @@ export default function EventParticipants() {
                                                     {/* Additional Info Badges */}
                                                     {(registration.iconPlayerRequest || registration.playedPreviousLeague || registration.selfAssignedCategory || registration.playBothTournaments) && (
                                                         <div className="flex flex-wrap gap-1 mt-1">
-                                                            {registration.iconPlayerRequest && (
+                                                            {registration.approvedIconPlayer && (
                                                                 <span className="px-2 py-0.5 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
                                                                     Icon Player
                                                                 </span>
@@ -952,7 +952,7 @@ export default function EventParticipants() {
                                                             )} */}
                                                             {registration.selfAssignedCategory && (
                                                                 <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                                                    {registration.approvedCategory || registration.selfAssignedCategory}
+                                                                    {registration.approvedCategory}
                                                                 </span>
                                                             )}
                                                         </div>
@@ -1167,7 +1167,7 @@ export default function EventParticipants() {
                                                                 )} */}
                                                                 {registration.selfAssignedCategory && (
                                                                     <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                                                                        {registration.approvedCategory || registration.selfAssignedCategory}
+                                                                        {registration.approvedCategory}
                                                                     </span>
                                                                 )}
                                                             </div>
@@ -1253,7 +1253,7 @@ export default function EventParticipants() {
                                                             </select>
                                                             <div className="flex items-center">
                                                                 <select
-                                                                    value={registration.approvedCategory || registration.selfAssignedCategory}
+                                                                    value={registration.approvedCategory}
                                                                     onChange={async (e) => {
                                                                         await updateRegistration(registration._id!.toString(), {
                                                                             approvedCategory: e.target.value,

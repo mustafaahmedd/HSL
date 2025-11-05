@@ -404,7 +404,7 @@ export default function AuctionDashboard() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm text-gray-900">
-                        {(auction.eventId as any)?.name || 'Unknown Event'}
+                        {(auction.eventId as any)?.title || 'Unknown Event'}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

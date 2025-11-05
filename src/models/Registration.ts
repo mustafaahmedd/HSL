@@ -150,7 +150,7 @@ const RegistrationSchema = new Schema<IRegistration>(
     // Status
     status: {
       type: String,
-      enum: ['pending', 'approved', 'rejected', 'cancelled'],
+      // enum: ['pending', 'approved', 'rejected', 'cancelled'],
       default: 'pending',
     },
     
@@ -178,6 +178,17 @@ const RegistrationSchema = new Schema<IRegistration>(
     teamId: {
       type: Schema.Types.ObjectId,
       ref: 'Team',
+    },
+    
+    // Auction-specific fields
+    auctionStatus: {
+      type: String,
+      enum: ['available', 'sold', 'unsold'],
+      default: 'available',
+    },
+    bidPrice: {
+      type: Number,
+      default: 0,
     },
   },
   {

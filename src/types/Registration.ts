@@ -44,7 +44,7 @@ export interface IRegistration {
   assurance?: boolean;
   
   // Status
-  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  status?: string; // 'pending' | 'approved' | 'rejected' | 'cancelled';
 
   
   // Admin Management
@@ -61,6 +61,10 @@ export interface IRegistration {
   approvedAt?: Date;
   rejectionReason?: string;
   teamId?: Types.ObjectId;
+  
+  // Auction-specific fields
+  auctionStatus?: 'available' | 'sold' | 'unsold';
+  bidPrice?: number;
   
   createdAt?: Date;
   updatedAt?: Date;

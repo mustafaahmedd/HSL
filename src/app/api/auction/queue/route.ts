@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Registration from '@/models/Registration';
 import { isAuthenticated } from '@/lib/auth';
+import Auction from '@/models/Auction';
 
 await dbConnect();
 
@@ -13,6 +14,7 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category');
+    const auctionId = searchParams.get('auctionId');
 
     if (!category) {
       return NextResponse.json(
@@ -21,18 +23,27 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Find all registrations in the specified category that are approved and not yet sold
-    // We need to find registrations that are part of the auction but not yet assigned to a team
-    const registrations = await Registration.find({
-      $or: [
-        { approvedCategory: category },
-        { selfAssignedCategory: category }
-      ],
-      status: 'approved',
-      teamId: { $exists: false }
-    }).lean(); // Use lean() for better performance
+    if (!auctionId) {
+      return NextResponse.json(
+        { error: 'AuctionId is required' },
+        { status: 400 }
+      );
+    }
+    const auction = await Auction.findById(auctionId);
     
-    console.log(`Found ${registrations.length} available players in ${category} category`);
+    if (!auction) {
+      return NextResponse.json(
+        { error: 'Auction not found' },
+        { status: 404 }
+      );
+    }
+
+    const registrations = await Registration.find({
+      _id: { $in: auction.players },
+      approvedCategory: category,
+      teamId: { $eq: null },
+      teamName: { $eq: "" }
+    }).lean();
 
     // Randomize the order
     const shuffledRegistrations = registrations.sort(() => Math.random() - 0.5);
@@ -40,6 +51,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       category,
+      auctionId,
       players: shuffledRegistrations,
       total: shuffledRegistrations.length
     });

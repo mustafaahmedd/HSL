@@ -4,13 +4,13 @@ import Team from '@/models/Team';
 import Registration from '@/models/Registration';
 import { isAuthenticated } from '@/lib/auth';
 
+await dbConnect();
 // GET /api/teams/[id] - Get single team with populated registrations
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await dbConnect();
     const { id } = await params;
     
     const team = await Team.findById(id)
@@ -75,7 +75,6 @@ export async function PUT(
       );
     }
 
-    await dbConnect();
     const { id } = await params;
     const body = await request.json();
 
@@ -92,6 +91,33 @@ export async function PUT(
     if (body.captain !== undefined) {
       team.captain = body.captain;
     }
+    
+    if (body.registrationId && team.eventType === 'auction') {
+      if (!Array.isArray(team.players)) {
+        team.players = [];
+      }
+      
+      // Check if captain is already in players array
+      const captainAlreadyExists = team.players.some((p: any) => 
+        p.registrationId?.toString() === body.registrationId.toString()
+      );
+      
+      if (!captainAlreadyExists) {
+        const captainPlayer = {
+          registrationId: body.registrationId as any,
+          playerName: body.captain || 'Captain',
+          category: body.category || 'Captain',
+          purchasePrice: 0, // Captain is free
+          transactionDate: new Date(),
+        };
+        team.players.push(captainPlayer);
+        
+        team.markModified('players');
+      } else {
+        console.log('Captain already exists in players array');
+      }
+    }
+    
     if (body.status !== undefined) {
       team.status = body.status;
     }

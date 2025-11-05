@@ -7,6 +7,47 @@ import { isAuthenticated } from '@/lib/auth';
 
 await dbConnect();
 
+// Category quota validation function
+const validateTeamCategoryQuota = (team: any, playerCategory: string): { valid: boolean; message?: string } => {
+  if (!team || !team.players) {
+    return { valid: true };
+  }
+
+  // Count existing players by category
+  const categoryCount = {
+    Platinum: 0,
+    Diamond: 0,
+    Gold: 0
+  };
+
+  team.players.forEach((player: any) => {
+    const category = player.category || player.approvedCategory;
+    if (category && categoryCount.hasOwnProperty(category)) {
+      categoryCount[category as keyof typeof categoryCount]++;
+    }
+  });
+
+  // Define quotas
+  const quotas = {
+    Platinum: 1,
+    Diamond: 2,
+    Gold: 999 // No limit for Gold
+  };
+
+  // Check if adding this player would exceed quota
+  const currentCount = categoryCount[playerCategory as keyof typeof categoryCount] || 0;
+  const maxAllowed = quotas[playerCategory as keyof typeof quotas] || 999;
+
+  if (currentCount >= maxAllowed) {
+    return {
+      valid: false,
+      message: `Team "${team.title}" already has ${currentCount}/${maxAllowed} ${playerCategory} player(s). Cannot add more ${playerCategory} players.`
+    };
+  }
+
+  return { valid: true };
+};
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -21,45 +62,48 @@ export async function GET(
 
     const auction = await Auction.findById(auctionId)
       .populate('eventId', 'title description startDate startTime endTime venue images maxParticipants')
-      .populate('players', 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole teamId playerId')
-      .populate('teams', 'title owner totalPoints pointsSpent pointsLeft players maxPlayers captain');
-
-    if (!auction) {
+      .populate({
+        path: 'teams',
+        select: 'title owner totalPoints pointsSpent pointsLeft players maxPlayers captain',
+        options: { lean: false }
+      })
+      .populate({
+        path: 'players', 
+        model: Registration,
+        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole teamId playerId auctionStatus bidPrice teamName'
+      });
+    
+      if (!auction) {
       return NextResponse.json(
         { success: false, error: 'Auction not found' },
         { status: 404 }
       );
     }
-    console.log(auction.players.length);
 
     // Get auction session
     const session = await AuctionSession.findOne({ auctionId })
-      .populate('currentPlayerId', 'name type category')
+      .populate({
+        path: 'currentPlayerId',
+        model: Registration,
+        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole teamId playerId auctionStatus bidPrice teamName'
+      })
       .populate('currentHighestBid')
       .populate('biddingHistory');
 
-    // Get all bids for this auction
-    const bids = await Bid.find({ auctionId })
-      .populate('playerId', 'name type approvedCategory approvedIconPlayer')
-      .populate('teamId', 'title owner totalBudget pointsSpent pointsLeft')
-      .sort({ timestamp: -1 });
 
     // Get auction statistics
     const stats = {
       totalPlayers: auction.players.length,
-      playersSold: auction.players.filter((p: any) => p.status === 'sold').length,
-      playersAvailable: auction.players.filter((p: any) => p.status === 'available').length,
+      playersSold: auction.players.filter((p: any) => p.auctionStatus === 'sold').length,
+      playersAvailable: auction.players.filter((p: any) => p.auctionStatus !== 'sold').length,
       totalTeams: auction.teams.length,
-      totalBids: bids.length,
       totalRevenue: auction.totalRevenue,
-      averageBidAmount: bids.length > 0 ? bids.reduce((sum, bid) => sum + bid.amount, 0) / bids.length : 0,
     };
 
     return NextResponse.json({
       success: true,
       auction,
       session,
-      bids,
       stats,
     });
   } catch (error) {
@@ -104,6 +148,15 @@ export async function PUT(
       case 'add_players':
         const registrationIds = data.registrationIds || [];
         const registrations = await Registration.find({ _id: { $in: registrationIds } });
+        
+        // Initialize auctionStatus for new registrations if not set
+        for (const registration of registrations) {
+          if (!registration.auctionStatus) {
+            registration.auctionStatus = 'available';
+            await registration.save();
+          }
+        }
+        
         const newRegistrationIds = registrations.map((r: any) => r._id);
         auction.players = [...new Set([...auction.players.map((p: any) => p.toString()), ...newRegistrationIds.map((r: any) => r.toString())])];
         break;
@@ -261,7 +314,7 @@ export async function PUT(
           );
         }
 
-        if (registration.status === 'sold') {
+        if (registration.auctionStatus === 'sold') {
           return NextResponse.json(
             { success: false, error: 'Player already sold' },
             { status: 400 }
@@ -276,13 +329,26 @@ export async function PUT(
           );
         }
 
+        // Validate team category quota for finalize_bid
+        const playerCategory = registration.approvedCategory || 'Gold';
+        const quotaValidation = validateTeamCategoryQuota(team, playerCategory);
+        
+        if (!quotaValidation.valid) {
+          return NextResponse.json(
+            { success: false, error: quotaValidation.message },
+            { status: 400 }
+          );
+        }
+
         // Mark this bid as winning and clear other winning flags for the player
         await Bid.updateMany({ auctionId, playerId: bid.playerId }, { $set: { isWinning: false } });
         bid.isWinning = true;
         await bid.save();
 
         // Assign player to team and adjust team budget
+        registration.auctionStatus = 'sold';
         registration.teamId = team._id as any;
+        registration.teamName = (team as any).title;
         registration.bidPrice = bid.amount;
         await registration.save();
 
@@ -290,7 +356,9 @@ export async function PUT(
         const purchase = {
           registrationId: registration._id as any,
           playerName: registration.name,
-          category: registration.selfAssignedCategory || 'Uncategorized',
+          playerRole: registration.playerRole ,
+          category: registration.approvedCategory ,
+          contactNo: registration.contactNo ,
           purchasePrice: bid.amount,
           transactionDate: new Date(),
         } as any;
@@ -299,6 +367,8 @@ export async function PUT(
         (team as any).players.push(purchase);
         (team as any).pointsSpent = ((team as any).pointsSpent || 0) + bid.amount;
         (team as any).pointsLeft = ((team as any).totalPoints || 0) - ((team as any).pointsSpent || 0);
+        
+        (team as any).markModified('players');
         await team.save();
 
         // Update auction totals and session stats
@@ -352,10 +422,13 @@ export async function PUT(
           (team as any).players.push({
             registrationId: pick._id as any,
             playerName: pick.name,
-            category: pick.selfAssignedCategory || 'Icon',
+            playerRole: pick.playerRole ,
+            category: pick.approvedCategory ,
+            contactNo: pick.contactNo ,
             purchasePrice: 0,
             transactionDate: new Date(),
           });
+          (team as any).markModified('players');
           await team.save();
         }
         break;
@@ -363,16 +436,18 @@ export async function PUT(
 
       // Manual assignment of player to team by moderator
       case 'manual_assign': {
-        const { registrationId, teamId, bidPrice } = data || {};
-        if (!registrationId || !teamId || bidPrice === undefined) {
+        const { registrationId, teamId, teamName, bidPrice } = data || {};
+        
+        if (!registrationId || !teamId || !teamName || bidPrice === undefined) {
           return NextResponse.json(
-            { success: false, error: 'registrationId, teamId, and bidPrice are required' },
+            { success: false, error: 'registrationId, teamId, teamName, and bidPrice are required' },
             { status: 400 }
           );
         }
 
         const registration = await Registration.findById(registrationId);
         const team = await Team.findById(teamId);
+        
         if (!registration || !team) {
           return NextResponse.json(
             { success: false, error: 'Registration or Team not found' },
@@ -380,7 +455,7 @@ export async function PUT(
           );
         }
 
-        if (registration.status === 'sold') {
+        if (registration.auctionStatus === 'sold') {
           return NextResponse.json(
             { success: false, error: 'Player already sold' },
             { status: 400 }
@@ -395,9 +470,21 @@ export async function PUT(
           );
         }
 
+        // Validate team category quota
+        const playerCategory = registration.approvedCategory || 'Gold';
+        const quotaValidation = validateTeamCategoryQuota(team, playerCategory);
+        
+        if (!quotaValidation.valid) {
+          return NextResponse.json(
+            { success: false, error: quotaValidation.message },
+            { status: 400 }
+          );
+        }
+
         // Assign player to team
-        registration.status = 'sold';
+        registration.auctionStatus = 'sold';
         registration.teamId = team._id as any;
+        registration.teamName = teamName;
         registration.bidPrice = bidPrice;
         await registration.save();
 
@@ -405,7 +492,9 @@ export async function PUT(
         const purchase = {
           registrationId: registration._id as any,
           playerName: registration.name,
-          category: registration.selfAssignedCategory || 'Uncategorized',
+          playerRole: registration.playerRole,
+          category: registration.approvedCategory,
+          contactNo: registration.contactNo,
           purchasePrice: bidPrice,
           transactionDate: new Date(),
         } as any;
@@ -414,22 +503,22 @@ export async function PUT(
         (team as any).players.push(purchase);
         (team as any).pointsSpent = ((team as any).pointsSpent || 0) + bidPrice;
         (team as any).pointsLeft = ((team as any).totalPoints || 0) - ((team as any).pointsSpent || 0);
+
+        (team as any).markModified('players');
         await team.save();
 
         // Update auction totals
         auction.totalRevenue = (auction.totalRevenue || 0) + bidPrice;
-
-        // Clear current player from session
-        const session = await AuctionSession.findOne({ auctionId });
-        if (session) {
-          session.sessionStats.playersSold = (session.sessionStats.playersSold || 0) + 1;
-          session.sessionStats.playersRemaining = Math.max(0, (session.sessionStats.playersRemaining || 0) - 1);
-          session.sessionStats.totalRevenue = (session.sessionStats.totalRevenue || 0) + bidPrice;
-          session.currentPlayerId = undefined as any;
-          session.biddingStartTime = undefined as any;
-          session.biddingEndTime = undefined as any;
-          await session.save();
-        }
+        await auction.save();
+        
+        return NextResponse.json({
+          success: true,
+          message: 'Player assigned successfully',
+          playerName: registration.name,
+          teamName: teamName,
+          bidPrice: bidPrice
+        });
+        
         break;
       }
 
