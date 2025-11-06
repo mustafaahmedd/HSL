@@ -22,8 +22,8 @@ export default function PublicAuctionDetails() {
     const [timerExpired, setTimerExpired] = useState(false);
 
     // TESTING FLAGS - Set these to test different conditions
-    const [forceTimerExpired, setForceTimerExpired] = useState(true); // Set to true to test post-timer functionality
-    const [showTestControls, setShowTestControls] = useState(true);
+    const [forceTimerExpired, setForceTimerExpired] = useState(false); // Set to true to test post-timer functionality
+    const [showTestControls, setShowTestControls] = useState(false);
 
     // Notification popup state
     const [showNotification, setShowNotification] = useState(false);
