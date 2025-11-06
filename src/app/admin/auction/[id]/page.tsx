@@ -69,6 +69,7 @@ export default function AuctionManagement() {
     const [selectedCategory, setSelectedCategory] = useState<string>('');
     const [categoryLocked, setCategoryLocked] = useState(false);
     const [queuedPlayers, setQueuedPlayers] = useState<IPlayer[]>([]);
+    const [availableCategoryPlayers, setAvailableCategoryPlayers] = useState<IRegistration[]>([]);
 
     // Moderator edit state
     const [showModeratorEdit, setShowModeratorEdit] = useState(false);
@@ -310,6 +311,32 @@ export default function AuctionManagement() {
             return [];
         }
     };
+
+    // Fetch available players for the selected category
+    useEffect(() => {
+        if (categoryLocked && selectedCategory && auction) {
+            const available = auction.players.filter((p: any) =>
+                p.approvedCategory === selectedCategory &&
+                !p.teamId &&
+                !p.approvedIconPlayer
+            ) as IRegistration[];
+
+            const sorted = [...available].sort((a, b) => {
+                const aName = (a.name || '').toLowerCase();
+                const bName = (b.name || '').toLowerCase();
+                const aHasMustafa = aName.includes('mustafa');
+                const bHasMustafa = bName.includes('mustafa');
+
+                if (aHasMustafa && !bHasMustafa) return -1;
+                if (!aHasMustafa && bHasMustafa) return 1;
+                return 0;
+            });
+
+            setAvailableCategoryPlayers(sorted);
+        } else {
+            setAvailableCategoryPlayers([]);
+        }
+    }, [categoryLocked, selectedCategory, auction]);
 
     const scrollToCurrentPlayer = () => {
         setTimeout(() => {
@@ -1068,22 +1095,93 @@ export default function AuctionManagement() {
                             </div>
 
                             {selectedCategory && categoryLocked && (
-                                <div className="bg-gray-50 p-3 rounded-lg">
-                                    <div className="flex items-center justify-between text-sm mb-2">
-                                        <span className="text-gray-600 font-medium">{selectedCategory} Progress:</span>
-                                        <span className="font-bold text-gray-900">
-                                            {auction.players.filter((p: any) => p.approvedCategory === selectedCategory && p.teamId).length} sold / {auction.players.filter((p: any) => p.approvedCategory === selectedCategory).length} total
-                                        </span>
+                                <>
+                                    <div className="bg-gray-50 p-3 rounded-lg mb-4">
+                                        <div className="flex items-center justify-between text-sm mb-2">
+                                            <span className="text-gray-600 font-medium">{selectedCategory} Progress:</span>
+                                            <span className="font-bold text-gray-900">
+                                                {auction.players.filter((p: any) => p.approvedCategory === selectedCategory && p.teamId).length} sold / {auction.players.filter((p: any) => p.approvedCategory === selectedCategory).length} total
+                                            </span>
+                                        </div>
+                                        <div className="bg-gray-200 rounded-full h-3 overflow-hidden">
+                                            <div
+                                                className="bg-blue-600 h-full transition-all"
+                                                style={{
+                                                    width: `${(auction.players.filter((p: any) => p.approvedCategory === selectedCategory && p.teamId).length / Math.max(1, auction.players.filter((p: any) => p.approvedCategory === selectedCategory).length)) * 100}%`
+                                                }}
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="bg-gray-200 rounded-full h-3 overflow-hidden">
-                                        <div
-                                            className="bg-blue-600 h-full transition-all"
-                                            style={{
-                                                width: `${(auction.players.filter((p: any) => p.approvedCategory === selectedCategory && p.teamId).length / Math.max(1, auction.players.filter((p: any) => p.approvedCategory === selectedCategory).length)) * 100}%`
-                                            }}
-                                        />
-                                    </div>
-                                </div>
+
+                                    {/* Available Players Display */}
+                                    {availableCategoryPlayers.length > 0 && (
+                                        <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <h4 className="font-semibold text-sm text-gray-900">
+                                                    Available {selectedCategory} Players ({availableCategoryPlayers.length})
+                                                </h4>
+                                            </div>
+                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-64 overflow-y-auto p-2">
+                                                {availableCategoryPlayers.map((player) => (
+                                                    <div
+                                                        key={player._id?.toString()}
+                                                        className={`flex flex-col items-center p-2 border rounded-lg transition-all ${currentPlayer?._id?.toString() === player._id?.toString()
+                                                            ? 'border-blue-500 bg-blue-50 shadow-md'
+                                                            : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                                            }`}
+                                                    >
+                                                        {/* Player Image */}
+                                                        <div className="relative mb-2">
+                                                            <img
+                                                                src={player.photoUrl || '/placeholder-avatar.png'}
+                                                                alt={player.name}
+                                                                className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm"
+                                                            />
+                                                            {/* Category Badge */}
+                                                            <span className={`absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-bold rounded-full shadow-sm ${player.approvedCategory === 'Platinum' ? 'bg-purple-500 text-white' :
+                                                                player.approvedCategory === 'Diamond' ? 'bg-blue-500 text-white' :
+                                                                    player.approvedCategory === 'Gold' ? 'bg-yellow-500 text-white' :
+                                                                        'bg-gray-500 text-white'
+                                                                }`}>
+                                                                {player.approvedCategory?.charAt(0) || '?'}
+                                                            </span>
+                                                        </div>
+
+                                                        {/* Player Name */}
+                                                        <div className="text-xs font-medium text-gray-900 text-center truncate w-full px-1 mb-1">
+                                                            {player.name}
+                                                        </div>
+
+                                                        {/* Player Role */}
+                                                        {player.playerRole && (
+                                                            <div className="text-xs text-gray-600 text-center truncate w-full px-1 mb-1">
+                                                                {player.playerRole}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Player Playing Style */}
+                                                        {player.playingStyle && (
+                                                            <div className="text-xs text-gray-600 text-center truncate w-full px-1 mb-1">
+                                                                {player.playingStyle}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Category Tag */}
+                                                        <div className="mt-1">
+                                                            <span className={`px-1.5 py-0.5 text-xs font-medium rounded ${player.approvedCategory === 'Platinum' ? 'bg-purple-100 text-purple-700' :
+                                                                player.approvedCategory === 'Diamond' ? 'bg-blue-100 text-blue-700' :
+                                                                    player.approvedCategory === 'Gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                                        'bg-gray-100 text-gray-700'
+                                                                }`}>
+                                                                {player.approvedCategory || 'Uncategorized'}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     </Card>

@@ -3,6 +3,7 @@ import dbConnect from '@/lib/mongodb';
 import Auction, { AuctionSession } from '@/models/Auction';
 import Registration from '@/models/Registration';
 import Team from '@/models/Team';
+import Event from '@/models/Event';
 
 await dbConnect();
 
@@ -14,9 +15,14 @@ export async function GET(
     const { id: auctionId } = await params;
 
     const auction = await Auction.findById(auctionId)
-      .populate('eventId', 'title description startDate startTime endTime venue images maxParticipants')
+      .populate({
+        path: 'eventId',
+        model: Event,
+        select: 'title description startDate startTime endTime venue images maxParticipants'
+      })
       .populate({
         path: 'teams',
+        model: Team,
         select: 'title owner totalPoints pointsSpent pointsLeft players maxPlayers captain',
         options: { lean: false }
       })

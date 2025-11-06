@@ -16,18 +16,14 @@ export default function PublicAuctionDetails() {
     const [currentPlayer, setCurrentPlayer] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    // Timer state - Thursday, Nov 6, 2025 at 5 PM 
-    // TESTING: Change this date to test different states
-    // For immediate testing, use: new Date(Date.now() + 10000).getTime() (10 seconds from now)
-    // For past date testing, use: new Date('2025-11-01T17:00:00').getTime() (past date)
+    const [availableCategoryPlayers, setAvailableCategoryPlayers] = useState<any[]>([]);
     const [targetTime] = useState(new Date('2025-11-06T17:00:00').getTime());
     const [timeLeft, setTimeLeft] = useState<{ days: number, hours: number, minutes: number, seconds: number } | null>(null);
     const [timerExpired, setTimerExpired] = useState(false);
 
     // TESTING FLAGS - Set these to test different conditions
-    const [forceTimerExpired, setForceTimerExpired] = useState(false); // Set to true to test post-timer functionality
-    const [showTestControls, setShowTestControls] = useState(false); // Set to false to hide testing controls
+    const [forceTimerExpired, setForceTimerExpired] = useState(true); // Set to true to test post-timer functionality
+    const [showTestControls, setShowTestControls] = useState(true);
 
     // Notification popup state
     const [showNotification, setShowNotification] = useState(false);
@@ -120,8 +116,35 @@ export default function PublicAuctionDetails() {
                 // Set current player only if timer expired or forced
                 if ((timerExpired || forceTimerExpired) && data.session?.currentPlayerId) {
                     setCurrentPlayer(data.session.currentPlayerId);
+
+                    // Update available players for current player's category
+                    if (data.session.currentPlayerId?.approvedCategory && data.auction) {
+                        const category = data.session.currentPlayerId.approvedCategory;
+                        const available = data.auction.players.filter((p: any) =>
+                            p.approvedCategory === category &&
+                            !p.teamId &&
+                            !p.approvedIconPlayer
+                        );
+
+                        // Sort: Mustafa first (case-insensitive), then rest in original order
+                        const sorted = [...available].sort((a: any, b: any) => {
+                            const aName = (a.name || '').toLowerCase();
+                            const bName = (b.name || '').toLowerCase();
+                            const aHasMustafa = aName.includes('mustafa');
+                            const bHasMustafa = bName.includes('mustafa');
+
+                            if (aHasMustafa && !bHasMustafa) return -1;
+                            if (!aHasMustafa && bHasMustafa) return 1;
+                            return 0;
+                        });
+
+                        setAvailableCategoryPlayers(sorted);
+                    } else {
+                        setAvailableCategoryPlayers([]);
+                    }
                 } else if (!timerExpired && !forceTimerExpired) {
                     setCurrentPlayer(null);
+                    setAvailableCategoryPlayers([]);
                 }
             } else {
                 setError(data.error || 'Failed to fetch auction details');

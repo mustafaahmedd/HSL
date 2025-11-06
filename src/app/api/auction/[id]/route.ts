@@ -3,6 +3,7 @@ import dbConnect from '@/lib/mongodb';
 import Auction, { Bid, AuctionSession } from '@/models/Auction';
 import Registration from '@/models/Registration';
 import Team from '@/models/Team';
+import Event from '@/models/Event';
 import { isAuthenticated } from '@/lib/auth';
 
 await dbConnect();
@@ -61,16 +62,21 @@ export async function GET(
     const { id: auctionId } = await params;
 
     const auction = await Auction.findById(auctionId)
-      .populate('eventId', 'title description startDate startTime endTime venue images maxParticipants')
+      .populate({
+        path: 'eventId',
+        model: Event,
+        select: 'title description startDate startTime endTime venue images maxParticipants'
+      })
       .populate({
         path: 'teams',
+        model: Team,
         select: 'title owner totalPoints pointsSpent pointsLeft players maxPlayers captain',
         options: { lean: false }
       })
       .populate({
         path: 'players', 
         model: Registration,
-        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole teamId playerId auctionStatus bidPrice teamName'
+        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole playingStyle teamId playerId auctionStatus bidPrice teamName'
       });
     
       if (!auction) {
@@ -85,7 +91,7 @@ export async function GET(
       .populate({
         path: 'currentPlayerId',
         model: Registration,
-        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole teamId playerId auctionStatus bidPrice teamName'
+        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole playingStyle teamId playerId auctionStatus bidPrice teamName'
       })
       .populate('currentHighestBid')
       .populate('biddingHistory');
@@ -540,9 +546,21 @@ export async function PUT(
     await auction.save();
 
     const updatedAuction = await Auction.findById(auctionId)
-      .populate('eventId', 'name description')
-      .populate('players', 'name type category status')
-      .populate('teams', 'name owner totalBudget pointsSpent pointsLeft');
+      .populate({
+        path: 'eventId',
+        model: Event,
+        select: 'name description'
+      })
+      .populate({
+        path: 'players',
+        model: Registration,
+        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole playingStyle teamId playerId auctionStatus bidPrice teamName'
+      })
+      .populate({
+        path: 'teams',
+        model: Team,
+        select: 'title owner totalPoints pointsSpent pointsLeft players maxPlayers captain'
+      });
 
     return NextResponse.json({
       success: true,
