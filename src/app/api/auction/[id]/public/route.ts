@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Auction, { AuctionSession } from '@/models/Auction';
 import Registration from '@/models/Registration';
+import Team from '@/models/Team';
 
 await dbConnect();
 

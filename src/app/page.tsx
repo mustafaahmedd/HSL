@@ -32,21 +32,52 @@ export default function HSLHome() {
   const [events, setEvents] = useState<any[]>([]);
   const [tournaments, setTournaments] = useState<ITournament[]>([]);
   const [loading, setLoading] = useState(true);
+  const [auctionId, setAuctionId] = useState<string>('');
 
   useEffect(() => {
     fetchEvents();
     fetchTournaments();
   }, []);
 
+  useEffect(() => {
+    if (!events || events.length === 0) return;
+    // Prefer the event explicitly marked as an auction
+    const auctionEvent = events.find((e: any) => e.eventType === 'auction') || events[0];
+    if (auctionEvent?._id) {
+      fetchAuction(auctionEvent._id);
+    }
+  }, [events]);
+
   const fetchEvents = async () => {
     try {
       const response = await fetch('/api/events?published=true');
       const data = await response.json();
       if (data.success) {
-        setEvents(data.events);
+        setEvents(data.events || []);
       }
     } catch (error) {
       console.error('Failed to fetch events:', error);
+    }
+  };
+
+  const fetchAuction = async (eventId: string) => {
+    console.log('Fetching auction for eventId:', eventId);
+    try {
+      const response = await fetch(`/api/auction?eventId=${eventId}`);
+      const data = await response.json();
+      if (data.success && data.auctions && data.auctions.length > 0) {
+        // Get the first auction (should be only one for this eventId)
+        const auction = data.auctions[0];
+        const id = auction._id || auction.id || '';
+        console.log('Auction found, setting auctionId:', id);
+        setAuctionId(id);
+      } else {
+        console.log('No auction found for eventId:', eventId);
+        setAuctionId('');
+      }
+    } catch (error) {
+      console.error('Failed to fetch auctions:', error);
+      setAuctionId('');
     }
   };
 
@@ -127,13 +158,27 @@ export default function HSLHome() {
             <p className="text-xl text-gray-300">Don't miss out on our next big events!</p>
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="flex flex-col">
+              <CountdownTimer
+                targetDate={getNextThursday5PM()}
+                title="Live Auction"
+                subtitle="Thursday, 5:00 PM at Hikmah Institute Auditorium"
+              />
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  if (!auctionId) return;
+                  const publicUrl = `${window.location.origin}/auction/${auctionId}/details`;
+                  window.open(publicUrl, '_blank');
+                }}
+                disabled={!auctionId}
+                className="mt-4 w-full bg-white/10 backdrop-blur-sm text-white border-2 border-white/20 hover:bg-white/20"
+              >
+                👁️ View Public Auction
+              </Button>
+            </div>
             <CountdownTimer
-              targetDate={getNextThursday5PM()}
-              title="Live Auction"
-              subtitle="Thursday, 5:00 PM at Hikmah Institute Auditorium"
-            />
-            <CountdownTimer
-              targetDate="2024-11-09T07:30:00"
+              targetDate="2025-11-09T07:30:00"
               title="Tournament Day"
               subtitle="Sunday, November 9th, 7:30 AM at Futflicks"
             />

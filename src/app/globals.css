@@ -224,30 +224,30 @@ body {
 }
 
 .registration-dark-mode input,
-select,
-span {
+.registration-dark-mode select,
+.registration-dark-mode span {
   color: #0a0a0a;
 }
 
 .participant-dark-mode input,
-select {
+.participant-dark-mode select {
   color: #0a0a0a;
 }
 
 .edit-registration-dark-mode input,
-select {
+.edit-registration-dark-mode select {
   color: #0a0a0a;
 }
 
 .tournament-creation-dark-mode input,
-select,
-textarea {
+.tournament-creation-dark-mode select,
+.tournament-creation-dark-mode textarea {
   color: #0a0a0a;
 }
 
 .team-creation-dark-mode input,
-select,
-textarea {
+.team-creation-dark-mode select,
+.team-creation-dark-mode textarea {
   color: #0a0a0a;
 }
 
