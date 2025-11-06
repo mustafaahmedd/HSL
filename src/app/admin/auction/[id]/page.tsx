@@ -596,6 +596,43 @@ export default function AuctionManagement() {
         }
     };
 
+    const handleRemovePlayer = async (registrationId: string, teamId: string, playerName: string) => {
+        if (!confirm(`Are you sure you want to remove ${playerName} from this team? This will undo the purchase and return the player to the available pool.`)) {
+            return;
+        }
+
+        const token = localStorage.getItem('adminToken');
+
+        try {
+            const response = await fetch(`/api/auction/${auctionId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`,
+                },
+                body: JSON.stringify({
+                    action: 'remove_player',
+                    data: {
+                        registrationId: registrationId,
+                        teamId: teamId
+                    }
+                }),
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert(`Player ${playerName} removed successfully. Points have been refunded to the team.`);
+                await fetchAuctionData();
+            } else {
+                alert(result.error || 'Failed to remove player');
+            }
+        } catch (error: any) {
+            console.error('Failed to remove player:', error.message);
+            alert('Failed to remove player');
+        }
+    };
+
     const checkCaptainAssignments = () => {
         if (!auction) return;
 
@@ -1846,11 +1883,11 @@ export default function AuctionManagement() {
                 </Card>
 
                 {/* Temporary section */}
-                {auction.status === 'live' || auction.status === 'completed' ? (
+                {/* {auction.status === 'live' || auction.status === 'completed' ? (
                     <div className="flex justify-between items-center my-6">
                         <h3 className="text-2xl font-bold text-gray-900">AUCTION DETAILS</h3>
                         <div className="flex gap-2">
-                            {/* <Button
+                            <Button
                                 variant="primary"
                                 onClick={() => {
                                     const publicUrl = `${window.location.origin}/auction/${auctionId}/details`;
@@ -1858,7 +1895,7 @@ export default function AuctionManagement() {
                                 }}
                             >
                                 🔗 Copy Public Link
-                            </Button> */}
+                            </Button>
                             <Button
                                 variant="secondary"
                                 onClick={() => {
@@ -1874,10 +1911,10 @@ export default function AuctionManagement() {
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="text-2xl font-bold text-gray-900">AUCTION DETAILS</h3>
                     </div>
-                )}
+                )} */}
 
                 {/* Detailed Auction Details - Purchase History */}
-                {auction.status !== 'live' && auction.status !== 'completed' ? (
+                {auction.status == 'live' || auction.status == 'completed' ? (
                     <Card className="my-8">
                         <div className="p-4">
                             <div className="flex justify-between items-center mb-6">
@@ -2023,7 +2060,7 @@ export default function AuctionManagement() {
                                             <table className="min-w-full border border-gray-300 mb-4">
                                                 <thead>
                                                     <tr className="bg-blue-600 text-white">
-                                                        <th colSpan={8} className="text-center py-3 text-lg font-bold">
+                                                        <th colSpan={9} className="text-center py-3 text-lg font-bold">
                                                             {team.title}
                                                         </th>
                                                     </tr>
@@ -2036,6 +2073,7 @@ export default function AuctionManagement() {
                                                         <th className="px-4 py-2 text-right text-xs font-semibold text-gray-700">Points Spent</th>
                                                         <th className="px-4 py-2 text-right text-xs font-semibold text-gray-700">Points Left</th>
                                                         <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Contact No</th>
+                                                        <th className="px-4 py-2 text-center text-xs font-semibold text-gray-700">Action</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -2049,6 +2087,7 @@ export default function AuctionManagement() {
                                                         <td className="px-4 py-3 text-right">-</td>
                                                         <td className="px-4 py-3 text-right font-bold text-green-600">{team.totalPoints?.toLocaleString()}</td>
                                                         <td className="px-4 py-3">-</td>
+                                                        <td className="px-4 py-3 text-center">-</td>
                                                     </tr>
 
                                                     {/* Captain Row */}
@@ -2067,6 +2106,7 @@ export default function AuctionManagement() {
                                                                     return captainReg?.contactNo || '-';
                                                                 })()}
                                                             </td>
+                                                            <td className="px-4 py-3 text-center">-</td>
                                                         </tr>
                                                     )}
 
@@ -2095,6 +2135,19 @@ export default function AuctionManagement() {
                                                                 <td className="px-4 py-3 text-right font-semibold text-red-600">{purchasePrice.toLocaleString()}</td>
                                                                 <td className="px-4 py-3 text-right font-bold text-green-600">{runningPointsLeft.toLocaleString()}</td>
                                                                 <td className="px-4 py-3">{player.contactNo || '-'}</td>
+                                                                <td className="px-4 py-3 text-center">
+                                                                    <button
+                                                                        onClick={() => handleRemovePlayer(
+                                                                            player.registrationId?.toString() || '',
+                                                                            team._id?.toString() || '',
+                                                                            player.playerName || 'Player'
+                                                                        )}
+                                                                        className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
+                                                                        title="Remove player from team"
+                                                                    >
+                                                                        Remove
+                                                                    </button>
+                                                                </td>
                                                             </tr>
                                                         );
                                                     })}
@@ -2102,7 +2155,7 @@ export default function AuctionManagement() {
                                                     {/* Empty row if no players yet */}
                                                     {sortedPlayers.length === 0 && (
                                                         <tr>
-                                                            <td colSpan={8} className="px-4 py-4 text-center text-gray-500">
+                                                            <td colSpan={9} className="px-4 py-4 text-center text-gray-500">
                                                                 No players purchased yet
                                                             </td>
                                                         </tr>
@@ -2114,6 +2167,7 @@ export default function AuctionManagement() {
                                                         <td className="px-4 py-3 text-right">Initial: {team.totalPoints?.toLocaleString()}</td>
                                                         <td className="px-4 py-3 text-right text-red-600">Spent: {(team.pointsSpent || 0).toLocaleString()}</td>
                                                         <td className="px-4 py-3 text-right text-green-600">Remaining: {(team.pointsLeft || team.totalPoints || 0).toLocaleString()}</td>
+                                                        <td className="px-4 py-3"></td>
                                                         <td className="px-4 py-3"></td>
                                                     </tr>
                                                 </tbody>

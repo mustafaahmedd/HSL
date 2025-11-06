@@ -536,6 +536,88 @@ export async function PUT(
         break;
       }
 
+      // Remove player from team (undo manual_assign)
+      case 'remove_player': {
+        const { registrationId, teamId } = data || {};
+        
+        if (!registrationId || !teamId) {
+          return NextResponse.json(
+            { success: false, error: 'registrationId and teamId are required' },
+            { status: 400 }
+          );
+        }
+
+        const registration = await Registration.findById(registrationId);
+        const team = await Team.findById(teamId);
+        
+        if (!registration || !team) {
+          return NextResponse.json(
+            { success: false, error: 'Registration or Team not found' },
+            { status: 404 }
+          );
+        }
+
+        if (registration.auctionStatus !== 'sold' || !registration.teamId) {
+          return NextResponse.json(
+            { success: false, error: 'Player is not assigned to any team' },
+            { status: 400 }
+          );
+        }
+
+        // Find and remove player from team's players array
+        if (!Array.isArray((team as any).players)) {
+          return NextResponse.json(
+            { success: false, error: 'Team has no players array' },
+            { status: 400 }
+          );
+        }
+
+        const playerIndex = (team as any).players.findIndex(
+          (p: any) => p.registrationId?.toString() === registrationId.toString()
+        );
+
+        if (playerIndex === -1) {
+          return NextResponse.json(
+            { success: false, error: 'Player not found in team roster' },
+            { status: 404 }
+          );
+        }
+
+        const player = (team as any).players[playerIndex];
+        const purchasePrice = player.purchasePrice || 0;
+
+        // Remove player from team
+        (team as any).players.splice(playerIndex, 1);
+        
+        // Add back purchasePrice to team's pointsLeft (by reducing pointsSpent)
+        (team as any).pointsSpent = Math.max(0, ((team as any).pointsSpent || 0) - purchasePrice);
+        (team as any).pointsLeft = ((team as any).totalPoints || 0) - ((team as any).pointsSpent || 0);
+
+        (team as any).markModified('players');
+        await team.save();
+
+        // Reset registration fields
+        registration.teamId = null as any;
+        registration.teamName = '';
+        registration.bidPrice = 0;
+        registration.auctionStatus = 'available';
+        await registration.save();
+
+        // Reduce auction totalRevenue
+        auction.totalRevenue = Math.max(0, (auction.totalRevenue || 0) - purchasePrice);
+        await auction.save();
+        
+        return NextResponse.json({
+          success: true,
+          message: 'Player removed successfully',
+          playerName: registration.name,
+          teamName: (team as any).title,
+          purchasePrice: purchasePrice
+        });
+        
+        break;
+      }
+
       default:
         return NextResponse.json(
           { success: false, error: 'Invalid action' },
