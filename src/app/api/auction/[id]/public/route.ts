@@ -29,7 +29,7 @@ export async function GET(
       .populate({
         path: 'players', 
         model: Registration,
-        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole teamId playerId auctionStatus bidPrice teamName'
+        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole playingStyle teamId playerId auctionStatus bidPrice teamName'
       });
     
     if (!auction) {

@@ -22,7 +22,7 @@ export default function PublicAuctionDetails() {
     const [timerExpired, setTimerExpired] = useState(false);
 
     // TESTING FLAGS - Set these to test different conditions
-    const [forceTimerExpired, setForceTimerExpired] = useState(false); // Set to true to test post-timer functionality
+    const [forceTimerExpired, setForceTimerExpired] = useState(false);
     const [showTestControls, setShowTestControls] = useState(false);
 
     // Notification popup state
@@ -116,34 +116,33 @@ export default function PublicAuctionDetails() {
                 // Set current player only if timer expired or forced
                 if ((timerExpired || forceTimerExpired) && data.session?.currentPlayerId) {
                     setCurrentPlayer(data.session.currentPlayerId);
-
-                    // Update available players for current player's category
-                    if (data.session.currentPlayerId?.approvedCategory && data.auction) {
-                        const category = data.session.currentPlayerId.approvedCategory;
-                        const available = data.auction.players.filter((p: any) =>
-                            p.approvedCategory === category &&
-                            !p.teamId &&
-                            !p.approvedIconPlayer
-                        );
-
-                        // Sort: Mustafa first (case-insensitive), then rest in original order
-                        const sorted = [...available].sort((a: any, b: any) => {
-                            const aName = (a.name || '').toLowerCase();
-                            const bName = (b.name || '').toLowerCase();
-                            const aHasMustafa = aName.includes('mustafa');
-                            const bHasMustafa = bName.includes('mustafa');
-
-                            if (aHasMustafa && !bHasMustafa) return -1;
-                            if (!aHasMustafa && bHasMustafa) return 1;
-                            return 0;
-                        });
-
-                        setAvailableCategoryPlayers(sorted);
-                    } else {
-                        setAvailableCategoryPlayers([]);
-                    }
                 } else if (!timerExpired && !forceTimerExpired) {
                     setCurrentPlayer(null);
+                }
+
+                // Update available players for current player's category only
+                if ((timerExpired || forceTimerExpired) && data.session?.currentPlayerId?.approvedCategory && data.auction) {
+                    const category = data.session.currentPlayerId.approvedCategory;
+                    const available = data.auction.players.filter((p: any) =>
+                        p.approvedCategory === category &&
+                        !p.teamId &&
+                        !p.approvedIconPlayer
+                    );
+
+                    // Sort: Mustafa first (case-insensitive), then rest in original order
+                    const sorted = [...available].sort((a: any, b: any) => {
+                        const aName = (a.name || '').toLowerCase();
+                        const bName = (b.name || '').toLowerCase();
+                        const aHasMustafa = aName.includes('mustafa');
+                        const bHasMustafa = bName.includes('mustafa');
+
+                        if (aHasMustafa && !bHasMustafa) return -1;
+                        if (!aHasMustafa && bHasMustafa) return 1;
+                        return 0;
+                    });
+
+                    setAvailableCategoryPlayers(sorted);
+                } else {
                     setAvailableCategoryPlayers([]);
                 }
             } else {
@@ -377,6 +376,75 @@ export default function PublicAuctionDetails() {
                                         </div>
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+                    </Card>
+                )}
+
+                {/* Available Players Display for Current Category */}
+                {auction.status === 'live' && (timerExpired || forceTimerExpired) && currentPlayer && availableCategoryPlayers.length > 0 && (
+                    <Card className="mb-6">
+                        <div className="p-4">
+                            <h4 className="font-semibold text-sm text-gray-900 mb-3">
+                                Available {currentPlayer.approvedCategory} Players ({availableCategoryPlayers.length})
+                            </h4>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-64 overflow-y-auto p-2">
+                                {availableCategoryPlayers.map((player) => (
+                                    <div
+                                        key={player._id?.toString()}
+                                        className={`flex flex-col items-center p-2 border rounded-lg transition-all ${currentPlayer?._id?.toString() === player._id?.toString()
+                                            ? 'border-blue-500 bg-blue-50 shadow-md'
+                                            : 'border-gray-200 hover:bg-gray-50 hover:border-gray-300'
+                                            }`}
+                                    >
+                                        {/* Player Image */}
+                                        <div className="relative mb-2">
+                                            <img
+                                                src={player.photoUrl || '/placeholder-avatar.png'}
+                                                alt={player.name}
+                                                className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm"
+                                            />
+                                            {/* Category Badge */}
+                                            <span className={`absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-bold rounded-full shadow-sm ${player.approvedCategory === 'Platinum' ? 'bg-purple-500 text-white' :
+                                                player.approvedCategory === 'Diamond' ? 'bg-blue-500 text-white' :
+                                                    player.approvedCategory === 'Gold' ? 'bg-yellow-500 text-white' :
+                                                        'bg-gray-500 text-white'
+                                                }`}>
+                                                {player.approvedCategory?.charAt(0) || '?'}
+                                            </span>
+                                        </div>
+
+                                        {/* Player Name */}
+                                        <div className="text-xs font-medium text-gray-900 text-center truncate w-full px-1 mb-1">
+                                            {player.name}
+                                        </div>
+
+                                        {/* Player Role */}
+                                        {player.playerRole && (
+                                            <div className="text-xs text-gray-600 text-center truncate w-full px-1 mb-1">
+                                                {player.playerRole}
+                                            </div>
+                                        )}
+
+                                        {/* Player Playing Style */}
+                                        {player.playingStyle && (
+                                            <div className="text-xs text-gray-600 text-center truncate w-full px-1 mb-1">
+                                                {player.playingStyle}
+                                            </div>
+                                        )}
+
+                                        {/* Category Tag */}
+                                        <div className="mt-1">
+                                            <span className={`px-1.5 py-0.5 text-xs font-medium rounded ${player.approvedCategory === 'Platinum' ? 'bg-purple-100 text-purple-700' :
+                                                player.approvedCategory === 'Diamond' ? 'bg-blue-100 text-blue-700' :
+                                                    player.approvedCategory === 'Gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                        'bg-gray-100 text-gray-700'
+                                                }`}>
+                                                {player.approvedCategory || 'Uncategorized'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
                     </Card>
