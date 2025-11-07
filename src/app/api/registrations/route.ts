@@ -24,8 +24,8 @@ export async function GET(request: NextRequest) {
     if (eventId) query.eventId = eventId;
     if (status) 
       query.status = status
-    else 
-      query.status = { $eq: 'approved' };
+    // else 
+    //   query.status = { $eq: 'approved' };
 
     const registrations = await Registration.find(query)
       .populate('eventId', 'title eventType startDate startTime endTime venue images maxParticipants')
