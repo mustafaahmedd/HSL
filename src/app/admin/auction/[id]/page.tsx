@@ -2166,7 +2166,7 @@ export default function AuctionManagement() {
                                                         <td colSpan={4} className="px-4 py-3">Total Players: {sortedPlayers.length}</td>
                                                         <td className="px-4 py-3 text-right">Initial: {team.totalPoints?.toLocaleString()}</td>
                                                         <td className="px-4 py-3 text-right text-red-600">Spent: {(team.pointsSpent || 0).toLocaleString()}</td>
-                                                        <td className="px-4 py-3 text-right text-green-600">Remaining: {(team.pointsLeft || team.totalPoints || 0).toLocaleString()}</td>
+                                                        <td className="px-4 py-3 text-right text-green-600">Remaining: {(team.pointsLeft || (team.totalPoints - team.pointsSpent)).toLocaleString()}</td>
                                                         <td className="px-4 py-3"></td>
                                                         <td className="px-4 py-3"></td>
                                                     </tr>
