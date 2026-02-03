@@ -299,7 +299,7 @@ export default function AuctionManagement() {
 
                 // If no players returned, show an alert
                 if (data.players.length === 0) {
-                    alert(`No available players found in ${category} category. All players may be sold or not approved.`);
+                    console.error(`No available players found in ${category} category. All players may be sold or not approved.`);
                 }
 
                 return data.players;
@@ -373,7 +373,7 @@ export default function AuctionManagement() {
             } else {
                 // No players available in this category
                 setCurrentPlayer(null);
-                alert(`No more players available in ${selectedCategory} category.`);
+                console.error(`No more players available in ${selectedCategory} category.`);
             }
         }
     };

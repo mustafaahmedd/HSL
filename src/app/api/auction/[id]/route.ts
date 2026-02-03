@@ -328,12 +328,12 @@ export async function PUT(
         }
 
         // Check if team has reached max players
-        if ((team as any).maxPlayers && (team as any).players.length >= (team as any).maxPlayers) {
-          return NextResponse.json(
-            { success: false, error: 'Team has reached maximum player capacity' },
-            { status: 400 }
-          );
-        }
+        // if ((team as any).maxPlayers && (team as any).players.length >= (team as any).maxPlayers) {
+        //   return NextResponse.json(
+        //     { success: false, error: 'Team has reached maximum player capacity' },
+        //     { status: 400 }
+        //   );
+        // }
 
         // Validate team category quota for finalize_bid
         const playerCategory = registration.approvedCategory || 'Gold';
@@ -477,12 +477,12 @@ export async function PUT(
         }
 
         // Check if team has reached max players
-        if ((team as any).maxPlayers && (team as any).players.length >= (team as any).maxPlayers) {
-          return NextResponse.json(
-            { success: false, error: 'Team has reached maximum player capacity' },
-            { status: 400 }
-          );
-        }
+        // if ((team as any).maxPlayers && (team as any).players.length >= (team as any).maxPlayers) {
+        //   return NextResponse.json(
+        //     { success: false, error: 'Team has reached maximum player capacity' },
+        //     { status: 400 }
+        //   );
+        // }
 
         // Validate team category quota
         const playerCategory = registration.approvedCategory || 'Gold';
