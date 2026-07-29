@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Card, Button, Input, Select, NumberInput } from '@/components/ui';
 import { IEvent } from '@/types/Event';
+import { toast } from 'react-toastify';
+import { DEFAULT_PAYMENT_ACCOUNT } from '@/lib/constants';
 
 export default function EditEvent() {
     const router = useRouter();
@@ -36,8 +38,12 @@ export default function EditEvent() {
         tags: '',
         isPublished: true,
         status: 'upcoming',
+        bankName: DEFAULT_PAYMENT_ACCOUNT.bankName,
+        accountTitle: DEFAULT_PAYMENT_ACCOUNT.accountTitle,
+        accountNumber: DEFAULT_PAYMENT_ACCOUNT.accountNumber,
+        iban: DEFAULT_PAYMENT_ACCOUNT.iban,
+        paymentUpdateReason: '',
     });
-    const [eventImages, setEventImages] = useState<File[]>([]);
 
     useEffect(() => {
         checkAuth();
@@ -70,7 +76,6 @@ export default function EditEvent() {
                 const eventData = data.event;
                 setEvent(eventData);
 
-                // Format date for input
                 const startDate = new Date(eventData.startDate).toISOString().split('T')[0];
 
                 setEventForm({
@@ -95,11 +100,16 @@ export default function EditEvent() {
                     tags: eventData.tags?.join(', ') || '',
                     isPublished: eventData.isPublished !== false,
                     status: eventData.status || 'upcoming',
+                    bankName: eventData.paymentAccount?.bankName || DEFAULT_PAYMENT_ACCOUNT.bankName,
+                    accountTitle: eventData.paymentAccount?.accountTitle || DEFAULT_PAYMENT_ACCOUNT.accountTitle,
+                    accountNumber: eventData.paymentAccount?.accountNumber || DEFAULT_PAYMENT_ACCOUNT.accountNumber,
+                    iban: eventData.paymentAccount?.iban || DEFAULT_PAYMENT_ACCOUNT.iban,
+                    paymentUpdateReason: '',
                 });
             }
         } catch (error) {
             console.error('Failed to fetch event:', error);
-            alert('Failed to load event details');
+            toast.error('Failed to load event details');
             router.push('/admin/events');
         } finally {
             setFetchLoading(false);
@@ -136,6 +146,13 @@ export default function EditEvent() {
                 tags: eventForm.tags.split(',').map(t => t.trim()).filter(t => t),
                 isPublished: eventForm.isPublished,
                 status: eventForm.status,
+                paymentAccount: {
+                    bankName: eventForm.bankName,
+                    accountTitle: eventForm.accountTitle,
+                    accountNumber: eventForm.accountNumber,
+                    iban: eventForm.iban,
+                },
+                paymentUpdateReason: eventForm.paymentUpdateReason || 'Updated in admin dashboard',
             };
 
             const response = await fetch('/api/events', {
@@ -150,22 +167,16 @@ export default function EditEvent() {
             const data = await response.json();
 
             if (data.success) {
-                alert('Event updated successfully!');
-                router.push(`/admin/events/${eventId}/participants`);
+                toast.success('Event & Payment Account updated successfully!');
+                fetchEvent();
             } else {
-                alert('Failed to update event: ' + data.error);
+                toast.error('Failed to update event: ' + data.error);
             }
         } catch (error) {
             console.error('Failed to update event:', error);
-            alert('Failed to update event');
+            toast.error('Failed to update event');
         } finally {
             setLoading(false);
-        }
-    };
-
-    const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (e.target.files) {
-            setEventImages(Array.from(e.target.files));
         }
     };
 
@@ -182,8 +193,8 @@ export default function EditEvent() {
 
     return (
         <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
-            <div className="max-w-4xl mx-auto">
-                <div className="mb-6">
+            <div className="max-w-4xl mx-auto space-y-6">
+                <div className="flex items-center justify-between">
                     <Button
                         variant="secondary"
                         onClick={() => router.push(`/admin/events/${eventId}/participants`)}
@@ -215,6 +226,8 @@ export default function EditEvent() {
                                             { value: 'tournament', label: 'Tournament' },
                                             { value: 'auction', label: 'Auction' },
                                             { value: 'activity', label: 'Activity' },
+                                            { value: 'farmhouse', label: 'FarmHouse' },
+                                            { value: 'beach', label: 'Beach Party' },
                                             { value: 'competition', label: 'Competition' },
                                         ]}
                                     />
@@ -239,7 +252,7 @@ export default function EditEvent() {
                                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Event Details</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <Select
-                                        label="Sport"
+                                        label="Sport / Activity"
                                         value={eventForm.sport}
                                         onChange={(e) => setEventForm({ ...eventForm, sport: e.target.value })}
                                         options={[
@@ -247,14 +260,10 @@ export default function EditEvent() {
                                             { value: 'football', label: 'Football' },
                                             { value: 'futsal', label: 'Futsal' },
                                             { value: 'cycling', label: 'Cycling' },
+                                            { value: 'farmhouse', label: 'FarmHouse' },
                                             { value: 'padel', label: 'Padel' },
                                             { value: 'badminton', label: 'Badminton' },
                                             { value: 'tennis', label: 'Tennis' },
-                                            { value: 'basketball', label: 'Basketball' },
-                                            { value: 'volleyball', label: 'Volleyball' },
-                                            { value: 'swimming', label: 'Swimming' },
-                                            { value: 'athletics', label: 'Athletics' },
-                                            { value: 'academic', label: 'Academic' },
                                         ]}
                                     />
                                     <Select
@@ -262,120 +271,103 @@ export default function EditEvent() {
                                         value={eventForm.formTemplate}
                                         onChange={(e) => setEventForm({ ...eventForm, formTemplate: e.target.value })}
                                         options={[
-                                            { value: 'generic', label: 'Generic' },
-                                            { value: 'cricket', label: 'Cricket' },
-                                            { value: 'futsal', label: 'Futsal' },
-                                            { value: 'padel', label: 'Padel' },
-                                            { value: 'cycling', label: 'Cycling' },
+                                            { value: 'cricket', label: 'Cricket Form' },
+                                            { value: 'futsal', label: 'Futsal Form' },
+                                            { value: 'padel', label: 'Padel Form' },
+                                            { value: 'cycling', label: 'Cycling Form' },
+                                            { value: 'farmhouse', label: 'Farmhouse Form' },
+                                            { value: 'generic', label: 'Generic Form' },
                                         ]}
                                     />
-                                    <Input
-                                        label="Venue"
-                                        value={eventForm.venue}
-                                        onChange={(e) => setEventForm({ ...eventForm, venue: e.target.value })}
-                                        required
-                                    />
-                                    <Input
-                                        label="Start Date"
-                                        type="date"
-                                        value={eventForm.startDate}
-                                        onChange={(e) => setEventForm({ ...eventForm, startDate: e.target.value })}
-                                        required
-                                    />
-                                    <Input
-                                        label="Start Time"
-                                        type="time"
-                                        value={eventForm.startTime}
-                                        onChange={(e) => setEventForm({ ...eventForm, startTime: e.target.value })}
-                                        required
-                                    />
-                                    <Input
-                                        label="End Time"
-                                        type="time"
-                                        value={eventForm.endTime}
-                                        onChange={(e) => setEventForm({ ...eventForm, endTime: e.target.value })}
-                                        required
-                                    />
                                 </div>
                             </div>
 
-                            {/* Registration & Pricing */}
-                            <div>
-                                <h2 className="text-lg font-semibold text-gray-900 mb-4">Registration & Pricing</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <Select
-                                        label="Registration Type"
-                                        value={eventForm.registrationType}
-                                        onChange={(e) => setEventForm({ ...eventForm, registrationType: e.target.value })}
-                                        options={[
-                                            { value: 'individual', label: 'Individual' },
-                                            { value: 'team', label: 'Team' },
-                                            { value: 'both', label: 'Both' },
-                                        ]}
-                                    />
-                                    <Input
-                                        label="Max Participants"
-                                        type="number"
-                                        value={eventForm.maxParticipants}
-                                        onChange={(e) => setEventForm({ ...eventForm, maxParticipants: parseInt(e.target.value) || 0 })}
-                                    />
-                                    <Input
-                                        label="Price per Person (PKR)"
-                                        type="number"
-                                        value={eventForm.pricePerPerson}
-                                        onChange={(e) => setEventForm({ ...eventForm, pricePerPerson: parseFloat(e.target.value) || 0 })}
-                                    />
-                                    <Input
-                                        label="Price per Team (PKR)"
-                                        type="number"
-                                        value={eventForm.pricePerTeam}
-                                        onChange={(e) => setEventForm({ ...eventForm, pricePerTeam: parseFloat(e.target.value) || 0 })}
-                                    />
-                                </div>
+                            {/* Date & Location */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <Input
+                                    label="Date"
+                                    type="date"
+                                    value={eventForm.startDate}
+                                    onChange={(e) => setEventForm({ ...eventForm, startDate: e.target.value })}
+                                    required
+                                />
+                                <Input
+                                    label="Start Time"
+                                    value={eventForm.startTime}
+                                    onChange={(e) => setEventForm({ ...eventForm, startTime: e.target.value })}
+                                    required
+                                />
+                                <Input
+                                    label="End Time"
+                                    value={eventForm.endTime}
+                                    onChange={(e) => setEventForm({ ...eventForm, endTime: e.target.value })}
+                                    required
+                                />
                             </div>
 
-                            {/* Organizer Info */}
-                            <div>
-                                <h2 className="text-lg font-semibold text-gray-900 mb-4">Organizer Information</h2>
+                            <Input
+                                label="Venue"
+                                value={eventForm.venue}
+                                onChange={(e) => setEventForm({ ...eventForm, venue: e.target.value })}
+                                required
+                            />
+
+                            {/* Pricing */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <NumberInput
+                                    label="Price per Person (PKR)"
+                                    value={eventForm.pricePerPerson}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEventForm({ ...eventForm, pricePerPerson: Number(e.target.value) })}
+                                />
+                                <NumberInput
+                                    label="Price per Team (PKR)"
+                                    value={eventForm.pricePerTeam}
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEventForm({ ...eventForm, pricePerTeam: Number(e.target.value) })}
+                                />
+                            </div>
+
+                            {/* Payment Account Configuration */}
+                            <div className="border-t border-gray-200 pt-6">
+                                <h2 className="text-lg font-bold text-gray-900 mb-1">Official Event Bank Account Settings</h2>
+                                <p className="text-xs text-gray-500 mb-4">Any change here is automatically tracked in the audit log for backtracing missing payments.</p>
+
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <Input
-                                        label="Organizer Name"
-                                        value={eventForm.organizer}
-                                        onChange={(e) => setEventForm({ ...eventForm, organizer: e.target.value })}
+                                        label="Bank / Wallet Name"
+                                        value={eventForm.bankName}
+                                        onChange={(e) => setEventForm({ ...eventForm, bankName: e.target.value })}
+                                        placeholder="SadaPay / EasyPaisa / Meezan"
                                         required
                                     />
                                     <Input
-                                        label="Contact Phone"
-                                        type="tel"
-                                        value={eventForm.contactPhone}
-                                        onChange={(e) => setEventForm({ ...eventForm, contactPhone: e.target.value })}
+                                        label="Account Title"
+                                        value={eventForm.accountTitle}
+                                        onChange={(e) => setEventForm({ ...eventForm, accountTitle: e.target.value })}
+                                        placeholder="Mustafa Ahmed"
+                                        required
+                                    />
+                                    <Input
+                                        label="Account Number / Phone"
+                                        value={eventForm.accountNumber}
+                                        onChange={(e) => setEventForm({ ...eventForm, accountNumber: e.target.value })}
+                                        placeholder="03142566165"
+                                        required
+                                    />
+                                    <Input
+                                        label="IBAN (Optional)"
+                                        value={eventForm.iban}
+                                        onChange={(e) => setEventForm({ ...eventForm, iban: e.target.value })}
+                                        placeholder="PK48SADA0000003142566165"
                                     />
                                 </div>
-                            </div>
-
-                            {/* Additional Details */}
-                            <div>
-                                <h2 className="text-lg font-semibold text-gray-900 mb-4">Additional Details</h2>
-                                <Input
-                                    label="Amenities (comma-separated)"
-                                    value={eventForm.amenities}
-                                    onChange={(e) => setEventForm({ ...eventForm, amenities: e.target.value })}
-                                    placeholder="WiFi, Parking, etc."
-                                />
-                                <Input
-                                    label="Facilities (comma-separated)"
-                                    value={eventForm.facilities}
-                                    onChange={(e) => setEventForm({ ...eventForm, facilities: e.target.value })}
-                                    placeholder="Ground, Equipment, etc."
-                                    className="mt-4"
-                                />
-                                <Input
-                                    label="Tags (comma-separated)"
-                                    value={eventForm.tags}
-                                    onChange={(e) => setEventForm({ ...eventForm, tags: e.target.value })}
-                                    placeholder="popular, featured, etc."
-                                    className="mt-4"
-                                />
+                                <div className="mt-3">
+                                    <Input
+                                        label="Reason for Account Change (Optional Audit Note)"
+                                        value={eventForm.paymentUpdateReason}
+                                        onChange={(e) => setEventForm({ ...eventForm, paymentUpdateReason: e.target.value })}
+                                        placeholder="e.g. Switched to new SadaPay wallet for batch 2 payments"
+                                    />
+                                </div>
                             </div>
 
                             {/* Status & Publishing */}
@@ -425,6 +417,59 @@ export default function EditEvent() {
                                 </Button>
                             </div>
                         </form>
+                    </div>
+                </Card>
+
+                {/* Audit Log Card: Bank Account Change History */}
+                <Card className="bg-white border-blue-100">
+                    <div className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-gray-900">Bank Account Audit Trail & History Log</h2>
+                                <p className="text-xs text-gray-500">Historical records of all payment account details configured for this event to trace back any missing payment receipts.</p>
+                            </div>
+                            <span className="px-2.5 py-1 text-xs font-bold rounded-full bg-blue-100 text-blue-800">
+                                {event?.paymentAccountHistory?.length || 0} Log Entry(s)
+                            </span>
+                        </div>
+
+                        {event?.paymentAccountHistory && event.paymentAccountHistory.length > 0 ? (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-xs border-collapse">
+                                    <thead>
+                                        <tr className="bg-gray-100 border-b border-gray-200 text-gray-700">
+                                            <th className="p-3 font-semibold">Timestamp</th>
+                                            <th className="p-3 font-semibold">Bank / Wallet</th>
+                                            <th className="p-3 font-semibold">Account Title</th>
+                                            <th className="p-3 font-semibold">Account Number</th>
+                                            <th className="p-3 font-semibold">IBAN</th>
+                                            <th className="p-3 font-semibold">Updated By / Reason</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-200">
+                                        {event.paymentAccountHistory.map((item, idx) => (
+                                            <tr key={idx} className="hover:bg-gray-50">
+                                                <td className="p-3 font-mono text-gray-600 whitespace-nowrap">
+                                                    {new Date(item.updatedAt).toLocaleString()}
+                                                </td>
+                                                <td className="p-3 font-semibold text-blue-600">{item.bankName}</td>
+                                                <td className="p-3 text-gray-900">{item.accountTitle}</td>
+                                                <td className="p-3 font-mono font-bold text-gray-800">{item.accountNumber}</td>
+                                                <td className="p-3 font-mono text-gray-500">{item.iban || '-'}</td>
+                                                <td className="p-3 text-gray-600">
+                                                    <span className="font-semibold text-gray-800">{item.updatedBy || 'Admin'}</span>
+                                                    {item.reason && <span className="block text-[11px] text-gray-500">{item.reason}</span>}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ) : (
+                            <div className="text-center py-6 bg-gray-50 rounded-lg text-gray-500 text-xs">
+                                No historical bank account changes logged yet.
+                            </div>
+                        )}
                     </div>
                 </Card>
             </div>

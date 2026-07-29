@@ -134,6 +134,10 @@ const RegistrationSchema = new Schema<IRegistration>(
       enum: ['pending', 'paid', 'failed', 'refunded'],
       default: 'pending',
     },
+    paymentProofUrl: {
+      type: String,
+      trim: true,
+    },
     amountPaid: {
       type: Number,
       default: 0,

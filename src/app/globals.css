@@ -1,41 +1,54 @@
 @import "tailwindcss";
 
 :root {
-  /* Light theme colors */
-  --background: #ffffff;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --primary: #3b82f6;
+  /* Core Theme Colors - Subtle Obsidian & Emerald Gold Branding */
+  --background: #090d16;
+  --foreground: #f8fafc;
+  --card: #111827;
+  --card-hover: #1f2937;
+  --card-foreground: #f8fafc;
+  
+  /* Primary Brand: Emerald Green */
+  --primary: #10b981;
+  --primary-hover: #059669;
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f8fafc;
-  --muted-foreground: #64748b;
-  --accent: #f1f5f9;
-  --accent-foreground: #0f172a;
+  --primary-glow: rgba(16, 185, 129, 0.15);
+  
+  /* Secondary Accent: Champagne Amber / Gold */
+  --secondary: #d97706;
+  --secondary-hover: #b45309;
+  --secondary-foreground: #ffffff;
+  
+  /* Neutral Surface Elements */
+  --surface: #131c2e;
+  --surface-border: rgba(255, 255, 255, 0.08);
+  --surface-border-hover: rgba(16, 185, 129, 0.3);
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --accent: #1e293b;
+  --accent-foreground: #f8fafc;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
-  --border: #e2e8f0;
-  --input: #e2e8f0;
-  --ring: #3b82f6;
+  --border: #1e293b;
+  --input: #1e293b;
+  --ring: #10b981;
 
-  /* Status colors */
+  /* Status Colors */
   --success: #10b981;
   --warning: #f59e0b;
-  --info: #06b6d4;
+  --info: #38bdf8;
 
-  /* Tournament status colors */
+  /* Tournament Status Colors */
   --status-registration: #10b981;
   --status-setup: #f59e0b;
   --status-live: #ef4444;
-  --status-completed: #6b7280;
+  --status-completed: #64748b;
 
-  /* Player category colors */
-  --category-platinum: #8b5cf6;
-  --category-diamond: #06b6d4;
+  /* Player Category Colors */
+  --category-platinum: #a855f7;
+  --category-diamond: #38bdf8;
   --category-gold: #f59e0b;
-  --category-silver: #6b7280;
+  --category-silver: #94a3b8;
   --category-bronze: #d97706;
 }
 
@@ -57,246 +70,286 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #fafafa;
-    --card: #111827;
-    --card-foreground: #fafafa;
-    --primary: #3b82f6;
-    --primary-foreground: #ffffff;
-    --secondary: #1f2937;
-    --secondary-foreground: #fafafa;
-    --muted: #1f2937;
-    --muted-foreground: #9ca3af;
-    --accent: #1f2937;
-    --accent-foreground: #fafafa;
-    --destructive: #ef4444;
-    --destructive-foreground: #ffffff;
-    --border: #374151;
-    --input: #374151;
-    --ring: #3b82f6;
-  }
+  --font-sans: var(--font-sans), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), monospace;
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   line-height: 1.6;
 }
 
-/* Custom scrollbar */
+/* Custom subtle scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--muted);
+  background: var(--background);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--muted-foreground);
+  background: #1e293b;
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--foreground);
+  background: #334155;
+}
+
+/* Theme Utilities for Global Control */
+
+.bg-canvas {
+  background-color: var(--background);
+}
+
+.bg-surface-card {
+  background-color: rgba(17, 24, 39, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--surface-border);
+}
+
+.bg-surface-card:hover {
+  border-color: var(--surface-border-hover);
+}
+
+/* Typography Gradient Utilities */
+.text-gradient-primary {
+  background: linear-gradient(135deg, #ffffff 0%, #10b981 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-emerald {
+  background: linear-gradient(135deg, #34d399 0%, #059669 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.text-gradient-slate {
+  background: linear-gradient(135deg, #f8fafc 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Hero Subtle Glow Background */
+.hero-glow-bg {
+  position: relative;
+  background-color: #090d16;
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(16, 185, 129, 0.12) 0%, transparent 60%),
+    radial-gradient(circle at 80% 20%, rgba(217, 119, 6, 0.08) 0%, transparent 40%);
+}
+
+/* Buttons */
+.btn-emerald {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+  transition: all 0.25s ease;
+}
+
+.btn-emerald:hover {
+  background: linear-gradient(135deg, #34d399 0%, #10b981 100%);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.35);
+  transform: translateY(-1px);
+}
+
+.btn-glass {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  backdrop-filter: blur(8px);
+  font-weight: 600;
+  transition: all 0.25s ease;
+}
+
+.btn-glass:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(16, 185, 129, 0.4);
+  transform: translateY(-1px);
 }
 
 /* Status badges */
 .status-badge {
-  @apply px-2 py-1 text-xs font-medium rounded-full;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 9999px;
+  letter-spacing: 0.025em;
 }
 
 .status-registration {
-  @apply bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200;
+  background-color: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
 }
 
 .status-setup {
-  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200;
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
 .status-live {
-  @apply bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200;
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .status-completed {
-  @apply bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200;
+  background-color: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.3);
 }
 
-/* Category badges */
+/* Event Type Badges */
+.event-type-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border-radius: 0.375rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.event-type-auction {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.event-type-tournament {
+  background-color: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+}
+
+.event-type-activity {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.event-type-competition {
+  background-color: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+  border: 1px solid rgba(168, 85, 247, 0.4);
+}
+
+/* Category Badges */
 .category-platinum {
-  @apply bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200;
+  background-color: rgba(168, 85, 247, 0.15);
+  color: #d8b4fe;
+  border: 1px solid rgba(168, 85, 247, 0.3);
 }
 
 .category-diamond {
-  @apply bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200;
+  background-color: rgba(56, 189, 248, 0.15);
+  color: #7dd3fc;
+  border: 1px solid rgba(56, 189, 248, 0.3);
 }
 
 .category-gold {
-  @apply bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200;
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fde047;
+  border: 1px solid rgba(245, 158, 11, 0.3);
 }
 
 .category-silver {
-  @apply bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200;
+  background-color: rgba(148, 163, 184, 0.15);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.3);
 }
 
 .category-bronze {
-  @apply bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200;
+  background-color: rgba(217, 119, 6, 0.15);
+  color: #fdba74;
+  border: 1px solid rgba(217, 119, 6, 0.3);
 }
 
-/* Animation utilities */
-.animate-fade-in {
-  animation: fadeIn 0.3s ease-in-out;
+/* Glass card styling */
+.glass-card {
+  background: rgba(17, 24, 39, 0.6);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 1rem;
+  transition: all 0.3s ease;
 }
 
+.glass-card:hover {
+  background: rgba(17, 24, 39, 0.8);
+  border-color: rgba(16, 185, 129, 0.25);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+}
+
+/* Animations */
 @keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(8px);
   }
   to {
     opacity: 1;
     transform: translateY(0);
-  }
-}
-
-.animate-fadeIn {
-  animation: fadeIn 0.3s ease-in-out;
-}
-
-.animate-slide-up {
-  animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-bounceIn {
-  animation: bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
-}
-
-@keyframes bounceIn {
-  0% {
-    opacity: 0;
-    transform: scale(0.3);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.05);
-  }
-  70% {
-    transform: scale(0.9);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-.animate-shuffle {
-  animation: shuffle 1.5s ease-in-out infinite;
-  background-size: 200% 100%;
-}
-
-@keyframes shuffle {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-.registration-dark-mode input,
-.registration-dark-mode select,
-.registration-dark-mode span {
-  color: #0a0a0a;
-}
-
-.participant-dark-mode input,
-.participant-dark-mode select {
-  color: #0a0a0a;
-}
-
-.edit-registration-dark-mode input,
-.edit-registration-dark-mode select {
-  color: #0a0a0a;
-}
-
-.tournament-creation-dark-mode input,
-.tournament-creation-dark-mode select,
-.tournament-creation-dark-mode textarea {
-  color: #0a0a0a;
-}
-
-.team-creation-dark-mode input,
-.team-creation-dark-mode select,
-.team-creation-dark-mode textarea {
-  color: #0a0a0a;
-}
-
-@keyframes slide-down {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.animate-slide-down {
-  animation: slide-down 0.3s ease-out;
-}
-
-/* Custom animations for auction notifications */
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes bounce-in {
-  0% {
-    transform: scale(0.3);
-    opacity: 0;
-  }
-  50% {
-    transform: scale(1.05);
-  }
-  70% {
-    transform: scale(0.9);
-  }
-  100% {
-    transform: scale(1);
-    opacity: 1;
   }
 }
 
 .animate-fade-in {
-  animation: fade-in 0.3s ease-out;
+  animation: fadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.animate-bounce-in {
-  animation: bounce-in 0.6s ease-out;
+/* Global Form Controls Text Visibility Fix */
+input, select, textarea {
+  color: #0f172a;
+  background-color: #ffffff;
 }
+
+select option {
+  color: #0f172a;
+  background-color: #ffffff;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #64748b;
+}
+
+/* Dark mode inputs override */
+.registration-dark-mode input,
+.registration-dark-mode select,
+.participant-dark-mode input,
+.participant-dark-mode select,
+.edit-registration-dark-mode input,
+.edit-registration-dark-mode select,
+.tournament-creation-dark-mode input,
+.tournament-creation-dark-mode select,
+.team-creation-dark-mode input,
+.team-creation-dark-mode select {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+.registration-dark-mode select option,
+.participant-dark-mode select option,
+.edit-registration-dark-mode select option,
+.tournament-creation-dark-mode select option,
+.team-creation-dark-mode select option {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+}
+
+

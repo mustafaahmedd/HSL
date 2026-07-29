@@ -127,6 +127,9 @@ export default function FutsalRegistrationForm({ eventId, eventTitle, pricePerPe
             const data = await response.json();
 
             if (data.success) {
+                if (data.registration) {
+                    localStorage.setItem('lastRegistration', JSON.stringify(data.registration));
+                }
                 router.push(`/events/${eventId}/register/success`);
             } else {
                 alert('Registration failed: ' + data.error);

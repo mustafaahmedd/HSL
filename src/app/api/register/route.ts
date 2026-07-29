@@ -8,10 +8,9 @@ import { IRegistration } from '@/types/Registration';
 import { Types } from 'mongoose';
 import { saveFile } from '@/lib/upload';
 
-await dbConnect();
-
 export async function POST(request: NextRequest) {
   try {
+    await dbConnect();
     const formData = await request.formData();
     console.log(formData);
     const data = Object.fromEntries(formData.entries());
@@ -35,14 +34,16 @@ export async function POST(request: NextRequest) {
         { status: 404 }
       );
     }
-    const requiredFields = ['eventId', 'name', 'contactNo', 'skillLevel', 'paymentMethod', 'photo'];
-    
+    // Define required fields based on form template
+    const requiredFields = ['eventId', 'name', 'contactNo', 'paymentMethod'];
+    if (event.formTemplate === 'cricket' || event.formTemplate === 'futsal' || event.formTemplate === 'padel') {
+      requiredFields.push('skillLevel');
+    }
     if (event.sport === 'cricket') {
       requiredFields.push('selfAssignedCategory');
     }
     
     for (const field of requiredFields) {
-      // if (!formFields[field as keyof typeof formFields]) {
       if (!body[field as keyof typeof body]) {
         return NextResponse.json(
           { error: `${field} is required` },
@@ -51,10 +52,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Handle photo upload first
+    // Handle photo upload if provided
     let photoUrl = '/placeholder.jpg';
-    // const photoFile = formData.get('photo') as File;
-    if (photo && photo.size > 0) {
+    if (photo && photo instanceof File && photo.size > 0) {
       try {
         const uploadedFile = await saveFile(photo, 'players');
         photoUrl = uploadedFile.url;
@@ -110,8 +110,13 @@ export async function POST(request: NextRequest) {
       message: 'Registration successful',
       registration: {
         id: registration._id,
+        _id: registration._id,
         playerId: player._id,
         eventId: data.eventId,
+        name: data.name,
+        contactNo: data.contactNo,
+        courseEnrolled: data.courseEnrolled,
+        timings: data.timings,
         status: registration.status
       }
     });
@@ -142,3 +147,61 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function PATCH(request: NextRequest) {
+  try {
+    await dbConnect();
+    const formData = await request.formData();
+    let registrationId = formData.get('registrationId') as string;
+    const eventId = formData.get('eventId') as string;
+    const contactNo = formData.get('contactNo') as string;
+    const paymentProof = formData.get('paymentProof') as File;
+
+    if (!paymentProof) {
+      return NextResponse.json(
+        { error: 'Payment receipt image file is required' },
+        { status: 400 }
+      );
+    }
+
+    let registration = null;
+
+    if (registrationId && registrationId !== 'undefined' && registrationId !== 'null' && registrationId.trim() !== '') {
+      registration = await Registration.findById(registrationId);
+    }
+
+    if (!registration && eventId && contactNo) {
+      registration = await Registration.findOne({ eventId, contactNo }).sort({ createdAt: -1 });
+    }
+
+    if (!registration && eventId) {
+      registration = await Registration.findOne({ eventId }).sort({ createdAt: -1 });
+    }
+
+    if (!registration) {
+      return NextResponse.json(
+        { error: 'Registration record not found for payment receipt upload' },
+        { status: 404 }
+      );
+    }
+
+    const uploaded = await saveFile(paymentProof, 'registrations');
+    registration.paymentProofUrl = uploaded.url;
+    registration.paymentStatus = 'pending';
+    await registration.save();
+
+    return NextResponse.json({
+      success: true,
+      message: 'Payment proof uploaded successfully',
+      paymentProofUrl: uploaded.url,
+      registration,
+    });
+  } catch (error: any) {
+    console.error('Payment proof upload error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Failed to upload payment proof' },
+      { status: 500 }
+    );
+  }
+}
+

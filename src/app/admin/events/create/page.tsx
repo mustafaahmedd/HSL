@@ -2,8 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 import { Card, Button, Input, Select, NumberInput } from '@/components/ui';
 import { IEvent } from '@/types/Event';
+import { DEFAULT_PAYMENT_ACCOUNT } from '@/lib/constants';
 
 export default function CreateEvent() {
     const router = useRouter();
@@ -29,6 +31,10 @@ export default function CreateEvent() {
         contactPhone: '',
         tags: '',
         isPublished: true,
+        bankName: DEFAULT_PAYMENT_ACCOUNT.bankName,
+        accountTitle: DEFAULT_PAYMENT_ACCOUNT.accountTitle,
+        accountNumber: DEFAULT_PAYMENT_ACCOUNT.accountNumber,
+        iban: DEFAULT_PAYMENT_ACCOUNT.iban,
     });
     const [eventImages, setEventImages] = useState<File[]>([]);
 
@@ -70,6 +76,10 @@ export default function CreateEvent() {
             formData.append('minParticipants', eventForm.minParticipants.toString());
             formData.append('organizer', eventForm.organizer);
             formData.append('contactPhone', eventForm.contactPhone);
+            formData.append('bankName', eventForm.bankName);
+            formData.append('accountTitle', eventForm.accountTitle);
+            formData.append('accountNumber', eventForm.accountNumber);
+            formData.append('iban', eventForm.iban);
             formData.append('tags', JSON.stringify(eventForm.tags.split(',').map(t => t.trim()).filter(t => t)));
             formData.append('isPublished', eventForm.isPublished.toString());
             formData.append('status', 'upcoming');
@@ -90,13 +100,14 @@ export default function CreateEvent() {
             const data = await response.json();
 
             if (data.success) {
+                toast.success('Event created successfully!');
                 router.push('/admin/events');
             } else {
-                alert('Failed to create event: ' + data.error);
+                toast.error('Failed to create event: ' + data.error);
             }
         } catch (error) {
             console.error('Failed to create event:', error);
-            alert('Failed to create event');
+            toast.error('Failed to create event');
         } finally {
             setLoading(false);
         }
@@ -124,6 +135,10 @@ export default function CreateEvent() {
             contactPhone: '',
             tags: '',
             isPublished: true,
+            bankName: DEFAULT_PAYMENT_ACCOUNT.bankName,
+            accountTitle: DEFAULT_PAYMENT_ACCOUNT.accountTitle,
+            accountNumber: DEFAULT_PAYMENT_ACCOUNT.accountNumber,
+            iban: DEFAULT_PAYMENT_ACCOUNT.iban,
         });
         setEventImages([]);
     };
@@ -167,6 +182,8 @@ export default function CreateEvent() {
                                         { value: 'tournament', label: 'Tournament' },
                                         { value: 'activity', label: 'Activity' },
                                         { value: 'competition', label: 'Competition' },
+                                        { value: 'farmhouse', label: 'FarmHouse' },
+                                        { value: 'beach', label: 'Beach Party' },
                                     ]}
                                 />
                             </div>
@@ -181,6 +198,7 @@ export default function CreateEvent() {
                                         { value: 'football', label: 'Football' },
                                         { value: 'futsal', label: 'Futsal' },
                                         { value: 'cycling', label: 'Cycling' },
+                                        { value: 'farmhouse', label: 'FarmHouse' },
                                         { value: 'padel', label: 'Padel' },
                                         { value: 'badminton', label: 'Badminton' },
                                         { value: 'tennis', label: 'Tennis' },
@@ -201,6 +219,7 @@ export default function CreateEvent() {
                                         { value: 'futsal', label: 'Futsal Form' },
                                         { value: 'padel', label: 'Padel Form' },
                                         { value: 'cycling', label: 'Cycling Form' },
+                                        { value: 'farmhouse', label: 'Farmhouse Form' },
                                         { value: 'generic', label: 'Generic Form' },
                                     ]}
                                     required
@@ -355,6 +374,42 @@ export default function CreateEvent() {
                                     value={eventForm.contactPhone}
                                     onChange={(e) => setEventForm({ ...eventForm, contactPhone: e.target.value })}
                                 />
+                            </div>
+
+                            {/* Bank Account Config Section */}
+                            <div className="border-t border-gray-200 pt-6">
+                                <h3 className="text-lg font-bold text-gray-900 mb-1">Official Event Bank Account</h3>
+                                <p className="text-xs text-gray-500 mb-4">Set the bank/wallet details where participants transfer registration fees for this event.</p>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <Input
+                                        label="Bank / Wallet Name"
+                                        value={eventForm.bankName}
+                                        onChange={(e) => setEventForm({ ...eventForm, bankName: e.target.value })}
+                                        placeholder="SadaPay / EasyPaisa / Meezan Bank"
+                                        required
+                                    />
+                                    <Input
+                                        label="Account Title"
+                                        value={eventForm.accountTitle}
+                                        onChange={(e) => setEventForm({ ...eventForm, accountTitle: e.target.value })}
+                                        placeholder="Mustafa Ahmed"
+                                        required
+                                    />
+                                    <Input
+                                        label="Account Number / Phone"
+                                        value={eventForm.accountNumber}
+                                        onChange={(e) => setEventForm({ ...eventForm, accountNumber: e.target.value })}
+                                        placeholder="03142566165"
+                                        required
+                                    />
+                                    <Input
+                                        label="IBAN (Optional)"
+                                        value={eventForm.iban}
+                                        onChange={(e) => setEventForm({ ...eventForm, iban: e.target.value })}
+                                        placeholder="PK48SADA0000003142566165"
+                                    />
+                                </div>
                             </div>
 
                             <div className="flex items-center">

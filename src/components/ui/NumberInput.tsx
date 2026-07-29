@@ -24,10 +24,11 @@ export const NumberInput: React.FC<NumberInputProps> = ({
                 inputMode="numeric"
                 pattern="[0-9]*"
                 className={`
-          w-full px-3 py-2 border border-gray-300 rounded-md
+          w-full px-3 py-2 border border-gray-300 rounded-md text-slate-900 bg-white
           focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent
           ${error ? 'border-red-500 focus:ring-red-500' : ''}
           ${props.disabled ? 'bg-gray-100 cursor-not-allowed' : ''}
+          ${className}
         `}
                 {...props}
                 onChange={(e) => {

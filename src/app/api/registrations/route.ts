@@ -5,10 +5,12 @@ import Event from '@/models/Event';
 import Player from '@/models/Player';
 import { isAuthenticated } from '@/lib/auth';
 
-await dbConnect();
+export const dynamic = 'force-dynamic';
+
 // GET /api/registrations - Get all registrations (admin only)
 export async function GET(request: NextRequest) {
   try {
+    await dbConnect();
     const isAuth = await isAuthenticated(request);
     if (!isAuth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -58,6 +60,7 @@ export async function GET(request: NextRequest) {
 // POST /api/registrations - Create new registration
 export async function POST(request: NextRequest) {
   try {
+    await dbConnect();
     const body = await request.json();
     const {
       eventId,
@@ -166,6 +169,7 @@ export async function POST(request: NextRequest) {
 // PUT /api/registrations - Update registration status (admin only)
 export async function PUT(request: NextRequest) {
   try {
+    await dbConnect();
     const isAuth = await isAuthenticated(request);
     if (!isAuth) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

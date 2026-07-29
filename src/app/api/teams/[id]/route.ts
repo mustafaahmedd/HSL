@@ -4,13 +4,15 @@ import Team from '@/models/Team';
 import Registration from '@/models/Registration';
 import { isAuthenticated } from '@/lib/auth';
 
-await dbConnect();
+export const dynamic = 'force-dynamic';
+
 // GET /api/teams/[id] - Get single team with populated registrations
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await dbConnect();
     const { id } = await params;
     
     const team = await Team.findById(id)
@@ -66,6 +68,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await dbConnect();
     // Check authentication
     const isAuth = await isAuthenticated(request);
     if (!isAuth) {

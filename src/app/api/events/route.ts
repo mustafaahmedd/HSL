@@ -3,12 +3,14 @@ import dbConnect from '@/lib/mongodb';
 import Event from '@/models/Event';
 import { isAuthenticated } from '@/lib/auth';
 import { extractFiles, saveFiles } from '@/lib/upload';
+import { DEFAULT_PAYMENT_ACCOUNT } from '@/lib/constants';
 
-await dbConnect();
+export const dynamic = 'force-dynamic';
 
 // GET - Fetch all events (public)
 export async function GET(request: NextRequest) {
   try {
+    await dbConnect();
 
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status');
@@ -54,6 +56,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    await dbConnect();
     const formData = await request.formData();
     
     // Extract form fields
@@ -81,6 +84,21 @@ export async function POST(request: NextRequest) {
       tags: JSON.parse(formData.get('tags') as string || '[]'),
       isPublished: formData.get('isPublished') === 'true',
       status: formData.get('status') as string,
+      paymentAccount: {
+        bankName: (formData.get('bankName') as string) || DEFAULT_PAYMENT_ACCOUNT.bankName,
+        accountTitle: (formData.get('accountTitle') as string) || DEFAULT_PAYMENT_ACCOUNT.accountTitle,
+        accountNumber: (formData.get('accountNumber') as string) || DEFAULT_PAYMENT_ACCOUNT.accountNumber,
+        iban: (formData.get('iban') as string) || DEFAULT_PAYMENT_ACCOUNT.iban,
+      },
+      paymentAccountHistory: [{
+        bankName: (formData.get('bankName') as string) || DEFAULT_PAYMENT_ACCOUNT.bankName,
+        accountTitle: (formData.get('accountTitle') as string) || DEFAULT_PAYMENT_ACCOUNT.accountTitle,
+        accountNumber: (formData.get('accountNumber') as string) || DEFAULT_PAYMENT_ACCOUNT.accountNumber,
+        iban: (formData.get('iban') as string) || DEFAULT_PAYMENT_ACCOUNT.iban,
+        updatedAt: new Date(),
+        updatedBy: 'Admin',
+        reason: 'Initial setup on event creation'
+      }],
     };
 
     // Validate required fields
@@ -142,6 +160,7 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
+    await dbConnect();
     const { eventId, updates } = await request.json();
     console.log('Update event data:', { eventId, updates });
 
@@ -150,6 +169,42 @@ export async function PUT(request: NextRequest) {
         { error: 'Event ID is required' },
         { status: 400 }
       );
+    }
+
+    const existingEvent = await Event.findById(eventId);
+    if (!existingEvent) {
+      return NextResponse.json(
+        { error: 'Event not found' },
+        { status: 404 }
+      );
+    }
+
+    // Audit log payment account updates if changed
+    if (updates.paymentAccount) {
+      const newAcc = updates.paymentAccount;
+      const oldAcc = existingEvent.paymentAccount || {};
+
+      if (
+        newAcc.bankName !== oldAcc.bankName ||
+        newAcc.accountTitle !== oldAcc.accountTitle ||
+        newAcc.accountNumber !== oldAcc.accountNumber ||
+        newAcc.iban !== oldAcc.iban
+      ) {
+        const historyItem = {
+          bankName: newAcc.bankName,
+          accountTitle: newAcc.accountTitle,
+          accountNumber: newAcc.accountNumber,
+          iban: newAcc.iban,
+          updatedAt: new Date(),
+          updatedBy: updates.updatedBy || 'Admin',
+          reason: updates.paymentUpdateReason || 'Updated bank account details'
+        };
+
+        if (!updates.$push) {
+          updates.$push = {};
+        }
+        updates.$push.paymentAccountHistory = historyItem;
+      }
     }
 
     const event = await Event.findByIdAndUpdate(

@@ -4,11 +4,12 @@ import Team from '@/models/Team';
 import Event from '@/models/Event';
 import { isAuthenticated } from '@/lib/auth';
 
-await dbConnect();
+export const dynamic = 'force-dynamic';
 
 // GET /api/teams - Get all teams with filters (admin only)
 export async function GET(request: NextRequest) {
   try {
+    await dbConnect();
     const isAuth = await isAuthenticated(request);
     if (!isAuth) {
       return NextResponse.json({ error: 'Unauthorized to access teams' }, { status: 401 });

@@ -1,19 +1,10 @@
 import mongoose, { Mongoose } from "mongoose";
 
 declare global {
-  // Global variable type define kar rahe hain
   var mongooseCache: {
     conn: Mongoose | null;
     promise: Promise<Mongoose> | null;
   };
-}
-
-const MONGODB_URI = process.env.MONGODB_URI!;
-
-if (!MONGODB_URI) {
-  throw new Error(
-    "Please define the MONGODB_URI environment variable inside .env.local"
-  );
 }
 
 // Reuse connection across hot reloads in development
@@ -24,8 +15,15 @@ if (!cached) {
 }
 
 export default async function dbConnect(): Promise<Mongoose> {
+  const MONGODB_URI = process.env.MONGODB_URI;
+
+  if (!MONGODB_URI) {
+    throw new Error(
+      "Please define the MONGODB_URI environment variable inside .env.local"
+    );
+  }
+
   if (cached.conn) {
-    // already connected
     return cached.conn;
   }
 
@@ -34,7 +32,6 @@ export default async function dbConnect(): Promise<Mongoose> {
       bufferCommands: false,
     };
 
-    // type-safe promise
     cached.promise = mongoose.connect(MONGODB_URI, opts);
   }
 
