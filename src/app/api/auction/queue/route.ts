@@ -4,7 +4,7 @@ import Registration from '@/models/Registration';
 import { isAuthenticated } from '@/lib/auth';
 import Auction from '@/models/Auction';
 
-await dbConnect();
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   if (!await isAuthenticated(request)) {
@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    await dbConnect();
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category');
     const auctionId = searchParams.get('auctionId');

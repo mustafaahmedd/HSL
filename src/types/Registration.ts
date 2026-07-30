@@ -39,6 +39,7 @@ export interface IRegistration {
   // Registration details
   paymentMethod?: string;
   paymentStatus?: string;
+  paymentProofUrl?: string;
   amountPaid?: number;
   isPaid?: boolean;
   assurance?: boolean;

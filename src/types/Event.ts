@@ -4,9 +4,9 @@ export interface IEvent {
   _id?: Types.ObjectId;
   title: string;
   description: string;
-  eventType: 'auction' | 'tournament' | 'activity' | 'competition';
-  sport: 'cricket' | 'football' | 'futsal' | 'cycling' | 'padel' | 'badminton' | 'tennis' | 'basketball' | 'volleyball' | 'swimming' | 'athletics' | 'academic';
-  formTemplate: 'cricket' | 'futsal' | 'padel' | 'cycling' | 'generic';
+  eventType: 'auction' | 'tournament' | 'activity' | 'farmhouse' | 'beach' | 'competition';
+  sport: 'cricket' | 'football' | 'futsal' | 'cycling' | 'farmhouse' | 'beach' | 'padel' | 'badminton' | 'tennis' | 'basketball' | 'volleyball' | 'swimming' | 'athletics' | 'academic';
+  formTemplate: 'cricket' | 'futsal' | 'padel' | 'cycling' | 'generic' | 'farmhouse';
   status: 'upcoming' | 'live' | 'completed' | 'cancelled';
   startDate: Date;
   startTime: string;
@@ -33,6 +33,21 @@ export interface IEvent {
   contactInfo: {
     phone?: string;
   };
+  paymentAccount?: {
+    bankName: string;
+    accountTitle: string;
+    accountNumber: string;
+    iban?: string;
+  };
+  paymentAccountHistory?: {
+    bankName: string;
+    accountTitle: string;
+    accountNumber: string;
+    iban?: string;
+    updatedAt: Date;
+    updatedBy?: string;
+    reason?: string;
+  }[];
   createdAt?: Date;
   updatedAt?: Date;
 }

@@ -54,8 +54,10 @@ const timingOptions = [
 ];
 
 const courseOptions = [
+    { value: 'Graduate', label: 'Graduate' },
     { value: 'Darse Nizami', label: 'Darse Nizami' },
-    { value: 'QS / QHD / Pre Oula', label: 'QS / QHD / Pre Oula' },
+    // { value: 'QS / QHD / Pre Oula', label: 'QS / QHD / Pre Oula' },
+    { value: 'Short Course', label: 'Short Course' },
 ];
 
 const darseNizamiYears = [
@@ -73,11 +75,11 @@ const courseYears = [
     { value: 'Reviving Hearts', label: 'Reviving Hearts' },
     { value: 'Prep Oula', label: 'Prep Oula' },
     { value: 'QS/QHD 1', label: 'QS/QHD 1' },
-    { value: 'QS/QHD 2', label: 'QS/QHD 2' },
+    // { value: 'QS/QHD 2', label: 'QS/QHD 2' },
+    { value: 'QHD 2', label: 'QHD 2' },
     { value: 'QHD 3', label: 'QHD 3' },
     { value: 'QHD 4', label: 'QHD 4' },
-    { value: 'QHD 5', label: 'QHD 5' },
-    { value: 'QHD 6', label: 'QHD 6' },
+    // { value: 'QHD 6', label: 'QHD 6' },
 ];
 
 const playerTypes = [
@@ -571,7 +573,7 @@ export const getEventFields = (eventType: string, eventData?: any): Registration
             options: courseYears,
             conditional: {
                 field: 'courseEnrolled',
-                value: 'QS / QHD / Pre Oula'
+                value: 'Short Course'
             }
         },
         {
@@ -887,7 +889,7 @@ export const getEventFields = (eventType: string, eventData?: any): Registration
     baseFields.push(
         {
             name: 'paymentMethod',
-            label: `The contribution per player will be around ${eventData?.pricePerPerson || '800 - 1200'} Rs.`,
+            label: `The contribution per player will be ${eventData?.pricePerPerson || '800 - 1200'} Rs.`,
             type: 'select' as const,
             required: true,
             options: paymentOptions

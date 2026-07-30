@@ -5,13 +5,14 @@ import Registration from '@/models/Registration';
 import Team from '@/models/Team';
 import Event from '@/models/Event';
 
-await dbConnect();
+export const dynamic = 'force-dynamic';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await dbConnect();
     const { id: auctionId } = await params;
 
     const auction = await Auction.findById(auctionId)

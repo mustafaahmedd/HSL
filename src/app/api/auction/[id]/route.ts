@@ -6,7 +6,7 @@ import Team from '@/models/Team';
 import Event from '@/models/Event';
 import { isAuthenticated } from '@/lib/auth';
 
-await dbConnect();
+export const dynamic = 'force-dynamic';
 
 // Category quota validation function
 const validateTeamCategoryQuota = (team: any, playerCategory: string): { valid: boolean; message?: string } => {
@@ -54,6 +54,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await dbConnect();
     const isAuth = await isAuthenticated(request);
     if (!isAuth) {
       return NextResponse.json({ success: false, error: 'Unauthorized User to access auction/id route' }, { status: 401 });
@@ -126,6 +127,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await dbConnect();
     const isAuth = await isAuthenticated(request);
     if (!isAuth) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });

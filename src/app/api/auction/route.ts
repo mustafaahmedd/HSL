@@ -7,10 +7,11 @@ import Player from '@/models/Player';
 import Team from '@/models/Team';
 import { isAuthenticated } from '@/lib/auth';
 
-await dbConnect(); // Connect to MongoDB
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
   try {
+    await dbConnect();
     const isAuth = await isAuthenticated(request);
     // if (!isAuth) {
     //   return NextResponse.json({ success: false, error: 'Unauthorized User to access auction route' }, { status: 401 });
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    await dbConnect();
     const isAuth = await isAuthenticated(request);
     if (!isAuth) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
@@ -138,6 +140,7 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    await dbConnect();
     const isAuth = await isAuthenticated(request);
     if (!isAuth) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });

@@ -1,5 +1,6 @@
 import mongoose, { Schema, model, models } from 'mongoose';
 import { IEvent } from '@/types/Event';
+import { DEFAULT_PAYMENT_ACCOUNT } from '@/lib/constants';
 
 const EventSchema = new Schema<IEvent>(
   {
@@ -15,17 +16,17 @@ const EventSchema = new Schema<IEvent>(
     },
     eventType: {
       type: String,
-      enum: ['auction', 'tournament', 'activity', 'competition'],
+      enum: ['auction', 'tournament', 'activity', 'farmhouse', 'beach', 'competition'],
       required: true,
     },
     sport: {
       type: String,
-      enum: ['cricket', 'football', 'futsal', 'cycling', 'padel', 'badminton', 'tennis', 'basketball', 'volleyball', 'swimming', 'athletics', 'academic'],
+      enum: ['cricket', 'football', 'futsal', 'cycling', 'farmhouse', 'beach', 'padel', 'badminton', 'tennis', 'basketball', 'volleyball', 'swimming', 'athletics', 'academic'],
       default: 'cricket',
     },
     formTemplate: {
       type: String,
-      enum: ['cricket', 'futsal', 'padel', 'cycling', 'generic'],
+      enum: ['cricket', 'futsal', 'padel', 'cycling', 'generic', 'farmhouse'],
       default: 'generic',
     },
     status: {
@@ -121,6 +122,21 @@ const EventSchema = new Schema<IEvent>(
         trim: true,
       },
     },
+    paymentAccount: {
+      bankName: { type: String, default: () => DEFAULT_PAYMENT_ACCOUNT.bankName, trim: true },
+      accountTitle: { type: String, default: () => DEFAULT_PAYMENT_ACCOUNT.accountTitle, trim: true },
+      accountNumber: { type: String, default: () => DEFAULT_PAYMENT_ACCOUNT.accountNumber, trim: true },
+      iban: { type: String, default: () => DEFAULT_PAYMENT_ACCOUNT.iban, trim: true },
+    },
+    paymentAccountHistory: [{
+      bankName: { type: String, required: true },
+      accountTitle: { type: String, required: true },
+      accountNumber: { type: String, required: true },
+      iban: { type: String },
+      updatedAt: { type: Date, default: Date.now },
+      updatedBy: { type: String, default: 'Admin' },
+      reason: { type: String, trim: true },
+    }],
   },
   {
     timestamps: true,

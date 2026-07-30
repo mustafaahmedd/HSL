@@ -20,7 +20,7 @@ export const Input: React.FC<InputProps> = ({
       )}
       <input
         className={`
-          w-full px-3 py-2 border border-gray-300 rounded-lg
+          w-full px-3 py-2 border border-gray-300 rounded-lg text-slate-900 bg-white
           focus:ring-2 focus:ring-blue-500 focus:border-blue-500
           disabled:bg-gray-100 disabled:cursor-not-allowed
           ${error ? 'border-red-500' : ''}
