@@ -5,48 +5,17 @@ import Registration from '@/models/Registration';
 import Team from '@/models/Team';
 import Event from '@/models/Event';
 import { isAuthenticated } from '@/lib/auth';
+import { validateTeamCategoryQuota as validateQuota } from '@/lib/auctionConfig';
 
 export const dynamic = 'force-dynamic';
 
-// Category quota validation function
-const validateTeamCategoryQuota = (team: any, playerCategory: string): { valid: boolean; message?: string } => {
-  if (!team || !team.players) {
-    return { valid: true };
-  }
-
-  // Count existing players by category
-  const categoryCount = {
-    Platinum: 0,
-    Diamond: 0,
-    Gold: 0
-  };
-
-  team.players.forEach((player: any) => {
-    const category = player.category || player.approvedCategory;
-    if (category && categoryCount.hasOwnProperty(category)) {
-      categoryCount[category as keyof typeof categoryCount]++;
-    }
-  });
-
-  // Define quotas
-  const quotas = {
-    Platinum: 1,
-    Diamond: 2,
-    Gold: 999 // No limit for Gold
-  };
-
-  // Check if adding this player would exceed quota
-  const currentCount = categoryCount[playerCategory as keyof typeof categoryCount] || 0;
-  const maxAllowed = quotas[playerCategory as keyof typeof quotas] || 999;
-
-  if (currentCount >= maxAllowed) {
-    return {
-      valid: false,
-      message: `Team "${team.title}" already has ${currentCount}/${maxAllowed} ${playerCategory} player(s). Cannot add more ${playerCategory} players.`
-    };
-  }
-
-  return { valid: true };
+// Category quota is derived from how many players of that tier are in this auction
+const validateTeamCategoryQuota = async (auction: any, team: any, playerCategory: string) => {
+  const players = await Registration.find(
+    { _id: { $in: auction.players } },
+    'approvedCategory approvedIconPlayer'
+  ).lean();
+  return validateQuota(team, playerCategory, players, auction.teams.length);
 };
 
 export async function GET(
@@ -338,8 +307,8 @@ export async function PUT(
         // }
 
         // Validate team category quota for finalize_bid
-        const playerCategory = registration.approvedCategory || 'Gold';
-        const quotaValidation = validateTeamCategoryQuota(team, playerCategory);
+        const playerCategory = registration.approvedCategory || 'Silver';
+        const quotaValidation = await validateTeamCategoryQuota(auction, team, playerCategory);
         
         if (!quotaValidation.valid) {
           return NextResponse.json(
@@ -421,8 +390,8 @@ export async function PUT(
           }
 
           // Validate team category quota for assign_icon_players
-          const playerCategory = pick.approvedCategory || 'Gold';
-          const quotaValidation = validateTeamCategoryQuota(team, playerCategory);
+          const playerCategory = pick.approvedCategory || 'Captain';
+          const quotaValidation = await validateTeamCategoryQuota(auction, team, playerCategory);
           
           if (!quotaValidation.valid) {
             continue; // Skip this team and try the next one
@@ -487,8 +456,8 @@ export async function PUT(
         // }
 
         // Validate team category quota
-        const playerCategory = registration.approvedCategory || 'Gold';
-        const quotaValidation = validateTeamCategoryQuota(team, playerCategory);
+        const playerCategory = registration.approvedCategory || 'Silver';
+        const quotaValidation = await validateTeamCategoryQuota(auction, team, playerCategory);
         
         if (!quotaValidation.valid) {
           return NextResponse.json(
@@ -617,6 +586,49 @@ export async function PUT(
           purchasePrice: purchasePrice
         });
         
+        break;
+      }
+
+      // Undo captain matching and every sale: back to a fresh, upcoming auction with the same players and teams.
+      // Meant for dry runs before the real auction.
+      case 'reset_auction': {
+        const teams = await Team.find({ _id: { $in: auction.teams } });
+        const rosterIds = teams.flatMap((t: any) => (Array.isArray(t.players) ? t.players : []).map((p: any) => p.registrationId));
+
+        await Registration.updateMany(
+          { $or: [{ _id: { $in: [...auction.players, ...rosterIds] } }, { teamId: { $in: auction.teams } }] },
+          { $set: { teamId: null, teamName: '', bidPrice: 0, auctionStatus: 'available' } }
+        );
+
+        for (const team of teams as any[]) {
+          team.players = [];
+          team.pointsSpent = 0;
+          team.pointsLeft = team.totalPoints;
+          team.captain = '';
+          team.markModified('players');
+          await team.save();
+        }
+
+        await Bid.deleteMany({ auctionId });
+        await AuctionSession.updateOne(
+          { auctionId },
+          {
+            $set: {
+              isActive: false,
+              biddingHistory: [],
+              sessionStats: {
+                totalPlayers: auction.players.length,
+                playersSold: 0,
+                playersRemaining: auction.players.length,
+                totalRevenue: 0,
+              },
+            },
+            $unset: { currentPlayerId: 1, currentHighestBid: 1, biddingStartTime: 1, biddingEndTime: 1 },
+          }
+        );
+
+        auction.status = 'upcoming';
+        auction.totalRevenue = 0;
         break;
       }
 

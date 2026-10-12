@@ -79,7 +79,7 @@ export default function TeamsView() {
       'Platinum': 'bg-purple-100 text-purple-800',
       'Diamond': 'bg-blue-100 text-blue-800',
       'Gold': 'bg-yellow-100 text-yellow-800',
-      'Silver': 'bg-gray-100 text-gray-800',
+      'Silver': 'bg-slate-100 text-slate-800',
       'Bronze': 'bg-orange-100 text-orange-800',
     };
 

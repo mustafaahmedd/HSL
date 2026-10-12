@@ -5,6 +5,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button } from '@/components/ui';
 import { IAuction } from '@/types/Auction';
+import { getCategoryConfig } from '@/lib/auctionConfig';
+import PlayerPhoto from '@/components/ui/PlayerPhoto';
 
 export default function PublicAuctionDetails() {
     const params = useParams();
@@ -191,15 +193,6 @@ export default function PublicAuctionDetails() {
         );
     }
 
-    // Category configuration for pricing
-    const getCategoryConfig = (categoryName: string) => {
-        const CATEGORY_CONFIG = [
-            { name: 'Platinum', minBidPrice: 4000, bidIncrement: 400, color: 'purple' },
-            { name: 'Diamond', minBidPrice: 2500, bidIncrement: 200, color: 'blue' },
-            { name: 'Gold', minBidPrice: 1000, bidIncrement: 100, color: 'yellow' },
-        ];
-        return CATEGORY_CONFIG.find(cat => cat.name === categoryName) || CATEGORY_CONFIG[CATEGORY_CONFIG.length - 1];
-    };
 
     return (
         <div className="min-h-screen bg-gray-50 py-8">
@@ -329,14 +322,14 @@ export default function PublicAuctionDetails() {
                                 <div className="flex flex-col md:flex-row items-center gap-6">
                                     {/* Profile Picture */}
                                     <div className="relative">
-                                        <img
-                                            src={currentPlayer.photoUrl || '/placeholder-avatar.png'}
-                                            alt={currentPlayer.name}
+                                        <PlayerPhoto
+                                            src={currentPlayer.photoUrl}
+                                            name={currentPlayer.name}
                                             className="w-32 h-32 rounded-full object-cover border-4 border-white shadow-xl"
                                         />
                                         <span className={`absolute -top-2 -right-2 px-2 py-1 text-xs font-bold rounded-full shadow-lg ${currentPlayer.approvedCategory === 'Platinum' ? 'bg-purple-500 text-white' :
-                                            currentPlayer.approvedCategory === 'Diamond' ? 'bg-blue-500 text-white' :
-                                                currentPlayer.approvedCategory === 'Gold' ? 'bg-yellow-500 text-white' :
+                                            currentPlayer.approvedCategory === 'Gold' ? 'bg-yellow-500 text-white' :
+                                                currentPlayer.approvedCategory === 'Silver' ? 'bg-slate-500 text-white' :
                                                     'bg-gray-500 text-white'
                                             }`}>
                                             {currentPlayer.approvedCategory}
@@ -367,11 +360,11 @@ export default function PublicAuctionDetails() {
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
                                                 <div className="text-xs text-green-600 font-medium uppercase tracking-wide mb-1">Base Price</div>
-                                                <div className="text-lg font-bold text-green-700">PKR {getCategoryConfig(currentPlayer.approvedCategory || 'Gold').minBidPrice.toLocaleString()}</div>
+                                                <div className="text-lg font-bold text-green-700">PKR {getCategoryConfig(currentPlayer.approvedCategory || 'Silver').minBidPrice.toLocaleString()}</div>
                                             </div>
                                             <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
                                                 <div className="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">Bid Increment</div>
-                                                <div className="text-lg font-bold text-blue-700">PKR {getCategoryConfig(currentPlayer.approvedCategory || 'Gold').bidIncrement.toLocaleString()}</div>
+                                                <div className="text-lg font-bold text-blue-700">PKR {getCategoryConfig(currentPlayer.approvedCategory || 'Silver').bidIncrement.toLocaleString()}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -399,15 +392,15 @@ export default function PublicAuctionDetails() {
                                     >
                                         {/* Player Image */}
                                         <div className="relative mb-2">
-                                            <img
-                                                src={player.photoUrl || '/placeholder-avatar.png'}
-                                                alt={player.name}
+                                            <PlayerPhoto
+                                                src={player.photoUrl}
+                                                name={player.name}
                                                 className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm"
                                             />
                                             {/* Category Badge */}
                                             <span className={`absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-bold rounded-full shadow-sm ${player.approvedCategory === 'Platinum' ? 'bg-purple-500 text-white' :
-                                                player.approvedCategory === 'Diamond' ? 'bg-blue-500 text-white' :
-                                                    player.approvedCategory === 'Gold' ? 'bg-yellow-500 text-white' :
+                                                player.approvedCategory === 'Gold' ? 'bg-yellow-500 text-white' :
+                                                    player.approvedCategory === 'Silver' ? 'bg-slate-500 text-white' :
                                                         'bg-gray-500 text-white'
                                                 }`}>
                                                 {player.approvedCategory?.charAt(0) || '?'}
@@ -436,8 +429,8 @@ export default function PublicAuctionDetails() {
                                         {/* Category Tag */}
                                         <div className="mt-1">
                                             <span className={`px-1.5 py-0.5 text-xs font-medium rounded ${player.approvedCategory === 'Platinum' ? 'bg-purple-100 text-purple-700' :
-                                                player.approvedCategory === 'Diamond' ? 'bg-blue-100 text-blue-700' :
-                                                    player.approvedCategory === 'Gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                player.approvedCategory === 'Gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                    player.approvedCategory === 'Silver' ? 'bg-slate-100 text-slate-700' :
                                                         'bg-gray-100 text-gray-700'
                                                 }`}>
                                                 {player.approvedCategory || 'Uncategorized'}
@@ -655,8 +648,8 @@ export default function PublicAuctionDetails() {
                                                                 <td className="px-4 py-3">{player.playerRole || '-'}</td>
                                                                 <td className="px-4 py-3">
                                                                     <span className={`px-2 py-1 rounded text-xs font-medium ${player.category === 'Platinum' ? 'bg-purple-100 text-purple-700' :
-                                                                        player.category === 'Diamond' ? 'bg-blue-100 text-blue-700' :
-                                                                            player.category === 'Gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                                        player.category === 'Gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                                            player.category === 'Silver' ? 'bg-slate-100 text-slate-700' :
                                                                                 'bg-gray-100 text-gray-700'
                                                                         }`}>
                                                                         {player.category || '-'}

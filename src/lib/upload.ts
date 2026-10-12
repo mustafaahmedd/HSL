@@ -237,3 +237,25 @@ export async function deleteFileByUrl(url: string): Promise<boolean> {
     return false;
   }
 }
+
+// Copy a remote image (e.g. a Google Drive file) into Cloudinary as a face-centred square.
+// Tries letting Cloudinary fetch the URL itself, then falls back to downloading it here.
+// `publicId` makes it idempotent: re-importing the same file returns the existing asset.
+export async function uploadRemoteImage(url: string, category: string, publicId: string): Promise<string> {
+  const options = {
+    folder: `${DEFAULT_CONFIG.baseFolder}/${category}`,
+    public_id: publicId,
+    overwrite: false,
+    resource_type: 'image' as const,
+    transformation: [{ width: 800, height: 800, crop: 'fill', gravity: 'face' }],
+  };
+  try {
+    return (await cloudinary.uploader.upload(url, options)).secure_url;
+  } catch {
+    const res = await fetch(url);
+    const type = res.headers.get('content-type') || '';
+    if (!res.ok || !type.startsWith('image/')) throw new Error(`Could not download image (${res.status})`);
+    const dataUri = `data:${type};base64,${Buffer.from(await res.arrayBuffer()).toString('base64')}`;
+    return (await cloudinary.uploader.upload(dataUri, options)).secure_url;
+  }
+}

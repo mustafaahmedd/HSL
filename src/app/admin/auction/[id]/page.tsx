@@ -8,33 +8,10 @@ import { IAuction, IBid, IAuctionSession } from '@/types/Auction';
 import { IPlayer } from '@/types/Player';
 import { ITeam } from '@/types/Team';
 import { IRegistration } from '@/types/Registration';
+import PlayerImport from '@/components/admin/PlayerImport';
+import { CATEGORY_ORDER, getCategoryConfig, getCategoryQuota, countTeamCategory, validateTeamCategoryQuota as validateQuota } from '@/lib/auctionConfig';
+import PlayerPhoto from '@/components/ui/PlayerPhoto';
 
-// Category configuration with pricing
-const CATEGORY_CONFIG = [
-    {
-        name: 'Platinum',
-        minBidPrice: 4000,
-        bidIncrement: 400,
-        color: 'purple',
-    },
-    {
-        name: 'Diamond',
-        minBidPrice: 2500,
-        bidIncrement: 200,
-        color: 'blue',
-    },
-    {
-        name: 'Gold',
-        minBidPrice: 1000,
-        bidIncrement: 100,
-        color: 'yellow',
-    },
-];
-
-// Helper function to get category configuration
-const getCategoryConfig = (categoryName: string) => {
-    return CATEGORY_CONFIG.find(cat => cat.name === categoryName) || CATEGORY_CONFIG[CATEGORY_CONFIG.length - 1];
-};
 
 export default function AuctionManagement() {
     const router = useRouter();
@@ -273,6 +250,30 @@ export default function AuctionManagement() {
         }
     };
 
+    const handleResetAuction = async () => {
+        const answer = prompt(
+            'This undoes captain matching and ALL player sales, refunds every team purse and sets the auction back to upcoming. ' +
+            'Players and teams stay in the auction.\n\nType RESET to continue.'
+        );
+        if (answer?.trim().toUpperCase() !== 'RESET') return;
+
+        const response = await fetch(`/api/auction/${auctionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('adminToken')}`,
+            },
+            body: JSON.stringify({ action: 'reset_auction' }),
+        });
+        const result = await response.json();
+        if (!result.success) {
+            alert(result.error || 'Reset failed');
+            return;
+        }
+        // Reload so captain-matching queues, selected category and current player all start clean
+        window.location.reload();
+    };
+
     const handleAddPlayers = async () => {
         if (selectedRegistrationIds.length === 0) {
             alert('Please select at least one registrant.');
@@ -449,7 +450,7 @@ export default function AuctionManagement() {
 
         if (remainingPlayers === 0) {
             // Category completed! Move to next
-            const categoryOrder = ['Platinum', 'Diamond', 'Gold'];
+            const categoryOrder = CATEGORY_ORDER;
             const currentIndex = categoryOrder.indexOf(selectedCategory);
 
             if (currentIndex < categoryOrder.length - 1) {
@@ -479,44 +480,8 @@ export default function AuctionManagement() {
         }
     };
 
-    // Category quota validation function
-    const validateTeamCategoryQuota = (team: any, playerCategory: string): { valid: boolean; message?: string } => {
-        if (!team || !team.players) {
-            return { valid: true };
-        }
-        const categoryCount = {
-            Platinum: 0,
-            Diamond: 0,
-            Gold: 0
-        };
-
-        team.players.forEach((player: any) => {
-            const category = player.approvedCategory;
-            if (category && categoryCount.hasOwnProperty(category)) {
-                categoryCount[category as keyof typeof categoryCount]++;
-            }
-        });
-
-        // Define quotas
-        const quotas = {
-            Platinum: 1,
-            Diamond: 2,
-            Gold: 5
-        };
-
-        // Check if adding this player would exceed quota
-        const currentCount = categoryCount[playerCategory as keyof typeof categoryCount] || 0;
-        const maxAllowed = quotas[playerCategory as keyof typeof quotas] || 999;
-
-        if (currentCount >= maxAllowed) {
-            return {
-                valid: false,
-                message: `Team "${team.title}" already has ${currentCount}/${maxAllowed} ${playerCategory} player(s). Cannot add more ${playerCategory} players.`
-            };
-        }
-
-        return { valid: true };
-    };
+    const validateTeamCategoryQuota = (team: any, playerCategory: string) =>
+        validateQuota(team, playerCategory, auction?.players || [], auction?.teams?.length || 0);
 
     const handleManualAssignment = async () => {
         if (!currentPlayer || !moderatorTeamId || moderatorBidPrice < 0) {
@@ -525,7 +490,7 @@ export default function AuctionManagement() {
         }
 
         // Get category-specific minimum bid price
-        const categoryConfig = getCategoryConfig(currentPlayer.approvedCategory || 'Gold');
+        const categoryConfig = getCategoryConfig(currentPlayer.approvedCategory || 'Silver');
         if (moderatorBidPrice < categoryConfig.minBidPrice) {
             alert(`Minimum bid price for ${categoryConfig.name} category is PKR ${categoryConfig.minBidPrice.toLocaleString()}`);
             return;
@@ -539,7 +504,7 @@ export default function AuctionManagement() {
         }
 
         // Validate team category quota
-        const playerCategory = currentPlayer.approvedCategory || 'Gold';
+        const playerCategory = currentPlayer.approvedCategory || 'Silver';
         const quotaValidation = validateTeamCategoryQuota(selectedTeam, playerCategory);
 
         if (!quotaValidation.valid) {
@@ -824,7 +789,27 @@ export default function AuctionManagement() {
                             {auction.status.toUpperCase()}
                         </span>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-4">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
+                        <Button
+                            className="w-full sm:w-auto"
+                            onClick={async () => {
+                                const url = `${window.location.origin}/auction/${auctionId}/players`;
+                                try {
+                                    await navigator.clipboard.writeText(url);
+                                    alert(`Public player list link copied:\n${url}`);
+                                } catch {
+                                    prompt('Copy the public player list link:', url);
+                                }
+                            }}
+                        >
+                            Copy Public Link
+                        </Button>
+                        <Link href={`/auction/${auctionId}/players`} target="_blank">
+                            <Button variant="secondary" className="w-full sm:w-auto">View Public Page</Button>
+                        </Link>
+                        <Button variant="danger" className="w-full sm:w-auto" onClick={handleResetAuction}>
+                            Reset Auction
+                        </Button>
                         <Link href="/admin/auction">
                             <Button variant="secondary" className="w-full sm:w-auto">Back to Auctions</Button>
                         </Link>
@@ -917,9 +902,9 @@ export default function AuctionManagement() {
                                                     <div className="space-y-2 max-h-60 overflow-y-auto">
                                                         {captainMatchingStatus.availableCaptains.map((captain) => (
                                                             <div key={captain._id?.toString()} className="flex items-center gap-2 bg-purple-50 p-2 rounded border border-purple-100 hover:border-purple-300 transition-all">
-                                                                <img
-                                                                    src={captain.photoUrl || '/placeholder-avatar.png'}
-                                                                    alt={captain.name}
+                                                                <PlayerPhoto
+                                                                    src={captain.photoUrl}
+                                                                    name={captain.name}
                                                                     className="w-10 h-10 rounded-full object-cover border-2 border-purple-200"
                                                                 />
                                                                 <div className="flex-1 min-w-0">
@@ -1051,7 +1036,7 @@ export default function AuctionManagement() {
                             </h3>
 
                             <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-4 rounded-lg border border-purple-200 mb-4">
-                                <p className="text-sm text-gray-700 font-medium">Categories proceed in order: Platinum → Diamond → Gold</p>
+                                <p className="text-sm text-gray-700 font-medium">Categories proceed in order: {CATEGORY_ORDER.join(' → ')}</p>
                                 {categoryLocked && (
                                     <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-2">
                                         <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -1073,20 +1058,10 @@ export default function AuctionManagement() {
                                             }
                                         }}
                                         disabled={categoryLocked}
-                                        options={[
-                                            {
-                                                value: 'Platinum',
-                                                label: `Platinum (${auction.players.filter((r: any) => r.approvedCategory === 'Platinum' && !r.teamId && !r.approvedIconPlayer).length} available)`
-                                            },
-                                            {
-                                                value: 'Diamond',
-                                                label: `Diamond (${auction.players.filter((r: any) => (r.approvedCategory) === 'Diamond' && !r.teamId && !r.approvedIconPlayer).length} available)`
-                                            },
-                                            {
-                                                value: 'Gold',
-                                                label: `Gold (${auction.players.filter((r: any) => (r.approvedCategory) === 'Gold' && !r.teamId && !r.approvedIconPlayer).length} available)`
-                                            },
-                                        ]}
+                                        options={CATEGORY_ORDER.map(cat => ({
+                                            value: cat,
+                                            label: `${cat} (${auction.players.filter((r: any) => r.approvedCategory === cat && !r.teamId && !r.approvedIconPlayer).length} available)`
+                                        }))}
                                     />
                                 </div>
                                 <div className="flex gap-2 items-end">
@@ -1169,15 +1144,15 @@ export default function AuctionManagement() {
                                                     >
                                                         {/* Player Image */}
                                                         <div className="relative mb-2">
-                                                            <img
-                                                                src={player.photoUrl || '/placeholder-avatar.png'}
-                                                                alt={player.name}
+                                                            <PlayerPhoto
+                                                                src={player.photoUrl}
+                                                                name={player.name}
                                                                 className="w-16 h-16 rounded-full object-cover border-2 border-white shadow-sm"
                                                             />
                                                             {/* Category Badge */}
                                                             <span className={`absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-bold rounded-full shadow-sm ${player.approvedCategory === 'Platinum' ? 'bg-purple-500 text-white' :
-                                                                player.approvedCategory === 'Diamond' ? 'bg-blue-500 text-white' :
-                                                                    player.approvedCategory === 'Gold' ? 'bg-yellow-500 text-white' :
+                                                                player.approvedCategory === 'Gold' ? 'bg-yellow-500 text-white' :
+                                                                    player.approvedCategory === 'Silver' ? 'bg-slate-500 text-white' :
                                                                         'bg-gray-500 text-white'
                                                                 }`}>
                                                                 {player.approvedCategory?.charAt(0) || '?'}
@@ -1206,8 +1181,8 @@ export default function AuctionManagement() {
                                                         {/* Category Tag */}
                                                         <div className="mt-1">
                                                             <span className={`px-1.5 py-0.5 text-xs font-medium rounded ${player.approvedCategory === 'Platinum' ? 'bg-purple-100 text-purple-700' :
-                                                                player.approvedCategory === 'Diamond' ? 'bg-blue-100 text-blue-700' :
-                                                                    player.approvedCategory === 'Gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                                player.approvedCategory === 'Gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                                    player.approvedCategory === 'Silver' ? 'bg-slate-100 text-slate-700' :
                                                                         'bg-gray-100 text-gray-700'
                                                                 }`}>
                                                                 {player.approvedCategory || 'Uncategorized'}
@@ -1235,15 +1210,15 @@ export default function AuctionManagement() {
                                 {/* Profile Picture and Category Badge */}
                                 <div className="flex flex-col items-center mb-6">
                                     <div className="relative">
-                                        <img
-                                            src={currentPlayer.photoUrl || '/placeholder-avatar.png'}
-                                            alt={currentPlayer.name}
+                                        <PlayerPhoto
+                                            src={currentPlayer.photoUrl}
+                                            name={currentPlayer.name}
                                             onClick={() => setSelectedImage(currentPlayer.photoUrl)}
                                             className="w-40 h-40 rounded-full object-cover border-4 border-white shadow-xl cursor-pointer hover:scale-105 transition-transform duration-200"
                                         />
                                         <span className={`absolute -top-2 -right-2 px-3 py-1 text-xs font-bold rounded-full shadow-lg ${(currentPlayer.approvedCategory) === 'Platinum' ? 'bg-purple-500 text-white' :
-                                            (currentPlayer.approvedCategory) === 'Diamond' ? 'bg-blue-500 text-white' :
-                                                (currentPlayer.approvedCategory) === 'Gold' ? 'bg-yellow-500 text-white' :
+                                            (currentPlayer.approvedCategory) === 'Gold' ? 'bg-yellow-500 text-white' :
+                                                (currentPlayer.approvedCategory) === 'Silver' ? 'bg-slate-500 text-white' :
                                                     'bg-gray-500 text-white'
                                             }`}>
                                             {currentPlayer.approvedCategory}
@@ -1278,11 +1253,11 @@ export default function AuctionManagement() {
                                         <div className="grid grid-cols-1 gap-4">
                                             <div className="text-center p-4 bg-green-50 rounded-lg border border-green-200">
                                                 <div className="text-xs text-green-600 font-medium uppercase tracking-wide mb-1">Base Price</div>
-                                                <div className="text-xl font-bold text-green-700">PKR {getCategoryConfig(currentPlayer.approvedCategory || 'Gold').minBidPrice.toLocaleString()}</div>
+                                                <div className="text-xl font-bold text-green-700">PKR {getCategoryConfig(currentPlayer.approvedCategory || 'Silver').minBidPrice.toLocaleString()}</div>
                                             </div>
                                             <div className="text-center p-4 bg-blue-50 rounded-lg border border-blue-200">
                                                 <div className="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">Bid Increment</div>
-                                                <div className="text-xl font-bold text-blue-700">PKR {getCategoryConfig(currentPlayer.approvedCategory || 'Gold').bidIncrement.toLocaleString()}</div>
+                                                <div className="text-xl font-bold text-blue-700">PKR {getCategoryConfig(currentPlayer.approvedCategory || 'Silver').bidIncrement.toLocaleString()}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -1316,7 +1291,7 @@ export default function AuctionManagement() {
                                                 <NumberInput
                                                     value={moderatorBidPrice}
                                                     onChange={(e: any) => setModeratorBidPrice(Number(e.target.value))}
-                                                    placeholder={`Min: ${currentPlayer ? getCategoryConfig(currentPlayer.approvedCategory || 'Gold').minBidPrice.toLocaleString() : '500'}`}
+                                                    placeholder={`Min: ${currentPlayer ? getCategoryConfig(currentPlayer.approvedCategory || 'Silver').minBidPrice.toLocaleString() : '500'}`}
                                                     className="text-gray-900"
                                                 />
                                             </div>
@@ -1325,7 +1300,7 @@ export default function AuctionManagement() {
                                             <Button
                                                 variant="primary"
                                                 onClick={handleManualAssignment}
-                                                disabled={!moderatorTeamId || (currentPlayer ? moderatorBidPrice < getCategoryConfig(currentPlayer.approvedCategory || 'Gold').minBidPrice : true)}
+                                                disabled={!moderatorTeamId || (currentPlayer ? moderatorBidPrice < getCategoryConfig(currentPlayer.approvedCategory || 'Silver').minBidPrice : true)}
                                                 className="flex-1"
                                             >
                                                 Assign Player
@@ -1442,13 +1417,11 @@ export default function AuctionManagement() {
                                 <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 mb-6">
                                     <div className="flex items-center justify-center gap-4 text-lg">
                                         <div className="flex-1 text-center">
-                                            {lastMatchedPair.photoUrl && (
-                                                <img
-                                                    src={lastMatchedPair.photoUrl}
-                                                    alt={lastMatchedPair.captain}
-                                                    className="w-32 h-32 rounded-full object-cover mx-auto mb-2 border-4 border-purple-300"
-                                                />
-                                            )}
+                                            <PlayerPhoto
+                                                src={lastMatchedPair.photoUrl}
+                                                name={lastMatchedPair.captain}
+                                                className="w-32 h-32 rounded-full object-cover mx-auto mb-2 border-4 border-purple-300"
+                                            />
                                             <div className="font-bold text-purple-700 text-xl">{lastMatchedPair.captain}</div>
                                             <div className="text-sm text-gray-600">Captain</div>
                                         </div>
@@ -1510,30 +1483,14 @@ export default function AuctionManagement() {
                                         options={[
                                             { value: '', label: 'Select a team' },
                                             ...auction.teams.map((team: any) => {
-                                                // Calculate category counts for this team
-                                                const categoryCount = {
-                                                    Platinum: 0,
-                                                    Diamond: 0,
-                                                    Gold: 0
-                                                };
-
-                                                if (team.players) {
-                                                    team.players.forEach((player: any) => {
-                                                        const category = player.category || player.approvedCategory;
-                                                        if (category && categoryCount.hasOwnProperty(category)) {
-                                                            categoryCount[category as keyof typeof categoryCount]++;
-                                                        }
-                                                    });
-                                                }
-
                                                 // Check if current player can be added to this team
-                                                const playerCategory = currentPlayer?.approvedCategory || 'Gold';
+                                                const playerCategory = currentPlayer?.approvedCategory || 'Silver';
                                                 const quotaValidation = validateTeamCategoryQuota(team, playerCategory);
                                                 const canAddPlayer = quotaValidation.valid;
 
                                                 return {
                                                     value: team._id.toString(),
-                                                    label: `${team.title} (${team.owner}) - 🟣${categoryCount.Platinum}/1 🔵${categoryCount.Diamond}/2 🟡${categoryCount.Gold} ${!canAddPlayer ? '❌ QUOTA FULL' : ''}`,
+                                                    label: `${team.title} (${team.owner}) - ${CATEGORY_ORDER.map(cat => `${cat[0]} ${countTeamCategory(team, cat)}/${getCategoryQuota(cat, auction.players, auction.teams.length)}`).join(' · ')} ${!canAddPlayer ? '❌ QUOTA FULL' : ''}`,
                                                     disabled: !canAddPlayer
                                                 };
                                             })
@@ -1542,7 +1499,7 @@ export default function AuctionManagement() {
                                     {moderatorTeamId && (() => {
                                         const selectedTeam = auction.teams.find((t: any) => t._id.toString() === moderatorTeamId);
                                         if (selectedTeam) {
-                                            const playerCategory = currentPlayer?.approvedCategory || 'Gold';
+                                            const playerCategory = currentPlayer?.approvedCategory || 'Silver';
                                             const quotaValidation = validateTeamCategoryQuota(selectedTeam, playerCategory);
                                             if (!quotaValidation.valid) {
                                                 return (
@@ -1562,12 +1519,12 @@ export default function AuctionManagement() {
                                     <NumberInput
                                         value={moderatorBidPrice}
                                         onChange={(e: any) => setModeratorBidPrice(Number(e.target.value))}
-                                        placeholder={`Min: ${currentPlayer ? getCategoryConfig(currentPlayer.approvedCategory || 'Gold').minBidPrice.toLocaleString() : '500'}`}
+                                        placeholder={`Min: ${currentPlayer ? getCategoryConfig(currentPlayer.approvedCategory || 'Silver').minBidPrice.toLocaleString() : '500'}`}
                                         className="text-gray-900"
                                     />
                                     {currentPlayer && (
                                         <p className="text-xs text-gray-500 mt-1">
-                                            Minimum for {currentPlayer.approvedCategory || 'Gold'}: PKR {getCategoryConfig(currentPlayer.approvedCategory || 'Gold').minBidPrice.toLocaleString()}
+                                            Minimum for {currentPlayer.approvedCategory || 'Silver'}: PKR {getCategoryConfig(currentPlayer.approvedCategory || 'Silver').minBidPrice.toLocaleString()}
                                         </p>
                                     )}
                                 </div>
@@ -1577,7 +1534,7 @@ export default function AuctionManagement() {
                                     variant="primary"
                                     className="flex-1"
                                     onClick={handleManualAssignment}
-                                    disabled={!moderatorTeamId || (currentPlayer ? moderatorBidPrice < getCategoryConfig(currentPlayer.approvedCategory || 'Gold').minBidPrice : true)}
+                                    disabled={!moderatorTeamId || (currentPlayer ? moderatorBidPrice < getCategoryConfig(currentPlayer.approvedCategory || 'Silver').minBidPrice : true)}
                                 >
                                     Assign Player
                                 </Button>
@@ -1622,7 +1579,7 @@ export default function AuctionManagement() {
 
                 {/* Player Management */}
                 <Card title="Player Management" className="mb-8">
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
                         <div>
                             <span className="text-sm text-gray-600">
                                 {auction.players.length} players selected
@@ -1633,9 +1590,17 @@ export default function AuctionManagement() {
                         </Button>
                     </div>
 
+                    <PlayerImport
+                        auctionId={auctionId}
+                        onImported={async () => {
+                            await fetchAuctionData();
+                            await fetchAvailableData();
+                        }}
+                    />
+
                     {showPlayerSelection && (
                         <div className="mb-6 p-6 bg-white rounded-lg border border-gray-200 shadow-sm">
-                            <div className="flex justify-between items-center mb-4">
+                            <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
                                 <h4 className="font-semibold text-lg text-gray-900">Select Players to Add</h4>
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
@@ -1674,8 +1639,8 @@ export default function AuctionManagement() {
                                             {/* <div className="text-xs text-gray-600 mt-1">{reg.contactNo}</div> */}
                                             <div className="mt-2 flex items-center gap-2">
                                                 <span className={`px-2 py-0.5 text-xs font-medium rounded ${(reg.approvedCategory) === 'Platinum' ? 'bg-purple-100 text-purple-700' :
-                                                    (reg.approvedCategory) === 'Diamond' ? 'bg-blue-100 text-blue-700' :
-                                                        (reg.approvedCategory) === 'Gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                    (reg.approvedCategory) === 'Gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                        (reg.approvedCategory) === 'Silver' ? 'bg-slate-100 text-slate-700' :
                                                             'bg-gray-100 text-gray-700'
                                                     }`}>
                                                     {reg.approvedCategory || 'Uncategorized'}
@@ -1741,10 +1706,10 @@ export default function AuctionManagement() {
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <div className="flex items-center">
                                                 <div className="flex-shrink-0 h-10 w-10">
-                                                    <img
+                                                    <PlayerPhoto
                                                         className="h-10 w-10 rounded-full object-cover"
-                                                        src={player.photoUrl || '/placeholder-avatar.png'}
-                                                        alt={player.name}
+                                                        src={player.photoUrl}
+                                                        name={player.name}
                                                     />
                                                 </div>
                                                 <div className="ml-4">
@@ -1759,8 +1724,8 @@ export default function AuctionManagement() {
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{player.playerRole}</td>
                                         <td className="px-6 py-4 whitespace-nowrap">
                                             <span className={`px-2 py-1 text-xs rounded-full font-medium ${(player.approvedCategory) === 'Platinum' ? 'bg-purple-100 text-purple-800' :
-                                                (player.approvedCategory) === 'Diamond' ? 'bg-blue-100 text-blue-800' :
-                                                    (player.approvedCategory) === 'Gold' ? 'bg-yellow-100 text-yellow-800' :
+                                                (player.approvedCategory) === 'Gold' ? 'bg-yellow-100 text-yellow-800' :
+                                                    (player.approvedCategory) === 'Silver' ? 'bg-slate-100 text-slate-800' :
                                                         'bg-gray-100 text-gray-800'
                                                 }`}>
                                                 {player.approvedCategory}
@@ -1795,7 +1760,7 @@ export default function AuctionManagement() {
 
                 {/* Team Management */}
                 <Card title="Team Management">
-                    <div className="flex justify-between items-center mb-4">
+                    <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
                         <div>
                             <span className="text-sm text-gray-600">
                                 {auction.teams.length} teams registered
@@ -1884,7 +1849,7 @@ export default function AuctionManagement() {
 
                 {/* Temporary section */}
                 {/* {auction.status === 'live' || auction.status === 'completed' ? (
-                    <div className="flex justify-between items-center my-6">
+                    <div className="flex flex-wrap justify-between items-center gap-3 my-6">
                         <h3 className="text-2xl font-bold text-gray-900">AUCTION DETAILS</h3>
                         <div className="flex gap-2">
                             <Button
@@ -1908,7 +1873,7 @@ export default function AuctionManagement() {
                         </div>
                     </div>
                 ) : (
-                    <div className="flex justify-between items-center mb-6">
+                    <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
                         <h3 className="text-2xl font-bold text-gray-900">AUCTION DETAILS</h3>
                     </div>
                 )} */}
@@ -1917,7 +1882,7 @@ export default function AuctionManagement() {
                 {auction.status == 'live' || auction.status == 'completed' ? (
                     <Card className="my-8">
                         <div className="p-4">
-                            <div className="flex justify-between items-center mb-6">
+                            <div className="flex flex-wrap justify-between items-center gap-3 mb-6">
                                 <h3 className="text-2xl font-bold text-gray-900">AUCTION DETAILS</h3>
                                 <div className="flex gap-2">
                                     <Button
@@ -2124,8 +2089,8 @@ export default function AuctionManagement() {
                                                                 <td className="px-4 py-3">{player.playerRole || '-'}</td>
                                                                 <td className="px-4 py-3">
                                                                     <span className={`px-2 py-1 rounded text-xs font-medium ${player.category === 'Platinum' ? 'bg-purple-100 text-purple-700' :
-                                                                        player.category === 'Diamond' ? 'bg-blue-100 text-blue-700' :
-                                                                            player.category === 'Gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                                        player.category === 'Gold' ? 'bg-yellow-100 text-yellow-700' :
+                                                                            player.category === 'Silver' ? 'bg-slate-100 text-slate-700' :
                                                                                 'bg-gray-100 text-gray-700'
                                                                         }`}>
                                                                         {player.category || '-'}

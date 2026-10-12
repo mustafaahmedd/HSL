@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { Card, Button } from '@/components/ui';
 import { ITeam } from '@/types/Team';
+import PlayerPhoto from '@/components/ui/PlayerPhoto';
 
 export default function TeamDetail() {
     const params = useParams();
@@ -263,9 +264,9 @@ export default function TeamDetail() {
                                                     {/* Player Photo */}
                                                     {player.registration?.photoUrl && (
                                                         <div className="ml-4">
-                                                            <img
+                                                            <PlayerPhoto
                                                                 src={player.registration.photoUrl}
-                                                                alt={player.registration.name}
+                                                                name={player.registration.name}
                                                                 className="w-16 h-16 rounded-full object-cover"
                                                             />
                                                         </div>

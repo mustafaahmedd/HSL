@@ -340,7 +340,7 @@ export default function AdminTeams() {
 
                 {/* Teams Grid */}
                 {teams.length > 0 ? (
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
                         {teams.map((team: any) => (
                             <Card key={team._id?.toString()} className="hover:shadow-lg transition-shadow">
                                 <div className="p-6">
@@ -390,7 +390,7 @@ export default function AdminTeams() {
                                     </div>
 
                                     {/* Actions */}
-                                    <div className="flex space-x-2">
+                                    <div className="flex flex-wrap gap-2">
                                         <Button
                                             variant="primary"
                                             className="flex-1"

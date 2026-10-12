@@ -213,8 +213,8 @@ export default function PublicAuctionView() {
                                             <p className="text-gray-600">{currentPlayer.type}</p>
                                         </div>
                                         <span className={`px-3 py-1 rounded-full text-sm font-medium ${currentPlayer.category === 'Platinum' ? 'bg-purple-100 text-purple-800' :
-                                            currentPlayer.category === 'Diamond' ? 'bg-blue-100 text-blue-800' :
-                                                currentPlayer.category === 'Gold' ? 'bg-yellow-100 text-yellow-800' :
+                                            currentPlayer.category === 'Gold' ? 'bg-yellow-100 text-yellow-800' :
+                                                currentPlayer.category === 'Silver' ? 'bg-slate-100 text-slate-800' :
                                                     'bg-gray-100 text-gray-800'
                                             }`}>
                                             {currentPlayer.category}

@@ -3,6 +3,17 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import {
+    HomeIcon,
+    CalendarDaysIcon,
+    UserIcon,
+    ClipboardDocumentListIcon,
+    UserGroupIcon,
+    TrophyIcon,
+    ArrowLeftStartOnRectangleIcon,
+    ChevronDoubleLeftIcon,
+    Bars3Icon,
+} from '@heroicons/react/24/outline';
 
 type AdminLayoutProps = {
     children: React.ReactNode;
@@ -42,58 +53,54 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
     }, [pathname]);
 
     const navItems = [
-        { href: '/admin', label: 'Dashboard' },
-        { href: '/admin/events', label: 'Manage Events' },
-        { href: '/admin/players', label: 'Manage Players' },
-        { href: '/admin/registrations', label: 'Manage Registrations' },
-        { href: '/admin/teams', label: 'Teams' },
-        { href: '/admin/auction', label: 'Auction Control' },
+        { href: '/admin', label: 'Dashboard', icon: HomeIcon },
+        { href: '/admin/events', label: 'Manage Events', icon: CalendarDaysIcon },
+        { href: '/admin/players', label: 'Manage Players', icon: UserIcon },
+        { href: '/admin/registrations', label: 'Manage Registrations', icon: ClipboardDocumentListIcon },
+        { href: '/admin/teams', label: 'Teams', icon: UserGroupIcon },
+        { href: '/admin/auction', label: 'Auction Control', icon: TrophyIcon },
     ];
 
-    const Sidebar = (
+    // `compact` = icon-only rail (desktop collapsed). The mobile drawer always renders full width.
+    const renderSidebar = (compact: boolean) => (
         <div className="h-full flex flex-col">
-            <div className="px-3 py-4 border-b border-gray-200 flex items-center justify-between">
-                <div>
-                    <h2 className="text-sm md:text-base font-semibold">Admin Panel</h2>
-                    <p className="text-[10px] md:text-xs text-gray-500">Hikmah Student Life</p>
-                </div>
+            <div className={`py-4 border-b border-gray-200 flex items-center gap-2 ${compact ? 'justify-center px-2' : 'justify-between px-4'}`}>
+                {!compact && (
+                    <div className="min-w-0">
+                        <h2 className="text-base font-semibold text-gray-900 truncate">Admin Panel</h2>
+                        <p className="text-xs text-gray-500 truncate">Hikmah Student Life</p>
+                    </div>
+                )}
                 <button
                     onClick={() => setCollapsed((v) => !v)}
-                    className="hidden md:inline-flex items-center justify-center rounded-md p-1 text-gray-600 hover:bg-gray-100"
+                    className="hidden md:inline-flex shrink-0 items-center justify-center rounded-md p-1.5 text-gray-600 hover:bg-gray-100"
                     title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                    aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
                 >
-                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="15 18 9 12 15 6"></polyline>
-                    </svg>
+                    <ChevronDoubleLeftIcon className={`h-5 w-5 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
                 </button>
             </div>
             <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
-                {navItems.map((item) => {
-                    const active = pathname === item.href || pathname?.startsWith(item.href + '/');
+                {navItems.map(({ href, label, icon: Icon }) => {
+                    const active = href === '/admin' ? pathname === href : pathname === href || pathname?.startsWith(href + '/');
                     return (
                         <Link
-                            key={item.href}
-                            href={item.href}
+                            key={href}
+                            href={href}
+                            title={compact ? label : undefined}
                             className={
-                                `block rounded-md px-3 py-2 text-sm font-medium transition-colors whitespace-nowrap overflow-hidden ` +
-                                (active
-                                    ? 'bg-blue-600 text-white'
-                                    : 'text-gray-700 hover:bg-gray-100')
+                                `flex items-center gap-3 rounded-md py-2 text-sm font-medium transition-colors ` +
+                                (compact ? 'justify-center px-2 ' : 'px-3 ') +
+                                (active ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100')
                             }
                         >
-                            {collapsed ? (
-                                <span
-                                    className={`inline-block h-2 w-2 rounded-full ${active ? 'bg-blue-600' : 'bg-gray-400'}`}
-                                    title={item.label}
-                                />
-                            ) : (
-                                <span>{item.label}</span>
-                            )}
+                            <Icon className="h-5 w-5 shrink-0" />
+                            {!compact && <span className="truncate">{label}</span>}
                         </Link>
                     );
                 })}
             </nav>
-            <div className="border-t border-gray-200 p-3">
+            <div className="border-t border-gray-200 p-2">
                 <button
                     onClick={() => {
                         if (typeof window !== 'undefined') {
@@ -101,9 +108,11 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                         }
                         router.push('/admin/login');
                     }}
-                    className="w-full rounded-md px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100"
+                    title={compact ? 'Logout' : undefined}
+                    className={`flex w-full items-center gap-3 rounded-md py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 ${compact ? 'justify-center px-2' : 'px-3'}`}
                 >
-                    Logout
+                    <ArrowLeftStartOnRectangleIcon className="h-5 w-5 shrink-0" />
+                    {!compact && <span>Logout</span>}
                 </button>
             </div>
         </div>
@@ -119,34 +128,30 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
                     onClick={() => setMobileOpen((v) => !v)}
                     className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white p-2 text-gray-700 shadow-sm focus:outline-none"
                 >
-                    <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <line x1="3" y1="12" x2="21" y2="12" />
-                        <line x1="3" y1="6" x2="21" y2="6" />
-                        <line x1="3" y1="18" x2="21" y2="18" />
-                    </svg>
+                    <Bars3Icon className="h-5 w-5" />
                 </button>
             </div>
 
             {/* Layout wrapper - full width, sidebar anchored left */}
             <div className="relative md:flex">
                 {/* Static sidebar for md+ */}
-                <aside className={`hidden md:block md:sticky md:top-0 md:h-screen ${collapsed ? 'md:w-14' : 'md:w-64'} md:shrink-0 border-r border-gray-200 bg-white shadow-sm`}
-                    style={{ contain: 'size layout' }}>
-                    <div className="h-full">{Sidebar}</div>
+                <aside className={`hidden md:block md:sticky md:top-0 md:h-screen ${collapsed ? 'md:w-16' : 'md:w-64'} md:shrink-0 border-r border-gray-200 bg-white shadow-sm transition-[width] duration-200`}>
+                    {renderSidebar(collapsed)}
                 </aside>
 
                 {/* Drawer for mobile */}
                 {mobileOpen && (
                     <div className="fixed inset-0 z-40 flex md:hidden" role="dialog" aria-modal="true">
                         <div className="fixed inset-0 bg-black/30" onClick={() => setMobileOpen(false)} />
-                        <div className="relative ml-0 h-full w-72 bg-white shadow-xl">
-                            {Sidebar}
+                        <div className="relative ml-0 h-full w-72 max-w-[85vw] bg-white shadow-xl">
+                            {renderSidebar(false)}
                         </div>
                     </div>
                 )}
 
                 {/* Main content */}
-                <main className="w-full md:flex-1">
+                {/* min-w-0 lets the flex child shrink, so wide content scrolls inside its own container instead of the page */}
+                <main className="min-w-0 flex-1">
                     <div className="px-4 py-6 md:px-8">
                         <div className="mx-auto max-w-7xl">{children}</div>
                     </div>

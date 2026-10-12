@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { Card, Button, Input, Select, Pagination, exportToPDF } from '@/components/ui';
 import { IRegistration } from '@/types/Registration';
 import { IEvent } from '@/types/Event';
+import PlayerPhoto from '@/components/ui/PlayerPhoto';
 
 // Copy Button Component
 const CopyButton: React.FC<{ text: string }> = ({ text }) => {
@@ -928,9 +929,9 @@ export default function EventParticipants() {
                                                     />
                                                 </td>
                                                 <td className="px-3 py-3 whitespace-nowrap">
-                                                    <img
+                                                    <PlayerPhoto
                                                         src={registration.photoUrl}
-                                                        alt={registration.name}
+                                                        name={registration.name}
                                                         onClick={() => setSelectedImage(registration.photoUrl)}
                                                         className="w-10 h-10 rounded-full object-cover cursor-pointer hover:opacity-75 transition-opacity"
                                                     />
@@ -1084,14 +1085,11 @@ export default function EventParticipants() {
                                                     "
                                                     style={{}}
                                                 />
-                                                <img
+                                                <PlayerPhoto
                                                     src={registration.photoUrl}
-                                                    alt={registration.name}
+                                                    name={registration.name}
                                                     onClick={() => setSelectedImage(registration.photoUrl)}
                                                     className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-4 border-gray-200 cursor-pointer hover:opacity-75 transition-opacity"
-                                                    onError={(e) => {
-                                                        (e.target as HTMLImageElement).src = '/placeholder.jpg';
-                                                    }}
                                                 />
                                             </div>
 
@@ -1292,7 +1290,7 @@ export default function EventParticipants() {
                 {/* Payment Modal */}
                 {paymentModalOpen && selectedRegistration && (
                     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                        <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+                        <div className="relative top-20 mx-auto p-5 border w-[calc(100%-2rem)] max-w-sm shadow-lg rounded-md bg-white">
                             <div className="mt-3">
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">Mark Payment</h3>
 
