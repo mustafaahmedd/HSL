@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Card, Button, Input, Select } from '@/components/ui';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 
 interface CricketRegistrationFormProps {
     eventId: string;
@@ -177,11 +178,11 @@ export default function CricketRegistrationForm({ eventId, eventTitle, pricePerP
                 }
                 router.push(`/events/${eventId}/register/success`);
             } else {
-                alert('Registration failed: ' + data.error); // isko toast notification main convert karna hai ...
+                toast.error('Registration failed: ' + data.error);
             }
         } catch (error: any) {
             console.error('Registration error:', error);
-            alert('Registration failed. Please try again: ' + error.message);
+            toast.error('Registration failed. Please try again: ' + error.message);
         } finally {
             setLoading(false);
         }

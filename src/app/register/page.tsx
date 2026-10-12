@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import RegistrationForm, { fieldConfigs } from '@/components/forms/RegistrationForm';
 import { IEvent } from '@/types/Event';
+import { toast } from 'react-toastify';
 
 function RegisterForm() {
   const router = useRouter();
@@ -68,11 +69,11 @@ function RegisterForm() {
       if (data.success) {
         router.push('/register/success');
       } else {
-        alert(data.error || 'Registration failed');
+        toast.error(data.error || 'Registration failed');
       }
     } catch (error: any) {
       console.error('Registration error:', error);
-      alert('Failed to submit registration: ' + error.message);
+      toast.error('Failed to submit registration: ' + error.message);
     } finally {
       setLoading(false);
     }

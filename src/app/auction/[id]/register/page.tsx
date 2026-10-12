@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Card, Button, Input, Select } from '@/components/ui';
 import { IAuction } from '@/types/Auction';
 import { ITeam } from '@/types/Team';
+import { toast } from 'react-toastify';
 
 export default function TeamRegistration() {
     const router = useRouter();
@@ -84,22 +85,22 @@ export default function TeamRegistration() {
                     setShowCreateForm(false);
                     setTeamForm({ name: '', owner: '', totalBudget: 8000 });
                     fetchAuctionData();
-                    alert('Team created and registered successfully!');
+                    toast.success('Team created and registered');
                 } else {
-                    alert('Team created but failed to register for auction');
+                    toast.warning('Team created but failed to register for auction');
                 }
             } else {
-                alert(data.error || 'Failed to create team');
+                toast.error(data.error || 'Failed to create team');
             }
         } catch (error) {
             console.error('Failed to create team:', error);
-            alert('Failed to create team');
+            toast.error('Failed to create team');
         }
     };
 
     const handleJoinTeam = async () => {
         if (!selectedTeam) {
-            alert('Please select a team to join');
+            toast.error('Please select a team to join');
             return;
         }
 
@@ -121,13 +122,13 @@ export default function TeamRegistration() {
                 setShowJoinForm(false);
                 setSelectedTeam('');
                 fetchAuctionData();
-                alert('Team registered for auction successfully!');
+                toast.error('Team registered for auction successfully!');
             } else {
-                alert(data.error || 'Failed to register team');
+                toast.error(data.error || 'Failed to register team');
             }
         } catch (error) {
             console.error('Failed to register team:', error);
-            alert('Failed to register team');
+            toast.error('Failed to register team');
         }
     };
 

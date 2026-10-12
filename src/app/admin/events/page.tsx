@@ -4,6 +4,8 @@ import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, Button, Input, Select } from '@/components/ui';
 import { IEvent } from '@/types/Event';
+import { toast } from 'react-toastify';
+import { confirmDialog } from '@/components/ui/Dialogs';
 
 export default function AdminEvents() {
     const router = useRouter();
@@ -44,7 +46,12 @@ export default function AdminEvents() {
 
 
     const handleDeleteEvent = async (eventId: string) => {
-        if (!confirm('Are you sure you want to delete this event?')) return;
+        if (!(await confirmDialog({
+            title: 'Delete event?',
+            message: 'This cannot be undone.',
+            confirmText: 'Delete',
+            danger: true,
+        }))) return;
 
         const token = localStorage.getItem('adminToken');
 
@@ -63,11 +70,11 @@ export default function AdminEvents() {
             if (data.success) {
                 fetchEvents();
             } else {
-                alert('Failed to delete event: ' + data.error);
+                toast.error('Failed to delete event: ' + data.error);
             }
         } catch (error) {
             console.error('Failed to delete event:', error);
-            alert('Failed to delete event');
+            toast.error('Failed to delete event');
         }
     };
 

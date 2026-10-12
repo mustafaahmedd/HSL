@@ -3,6 +3,7 @@ import { Plus_Jakarta_Sans, Geist_Mono } from "next/font/google";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import "./globals.css";
+import { DialogHost } from "@/components/ui/Dialogs";
 
 const jakartaSans = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -32,6 +33,7 @@ export default function RootLayout({
       >
         {children}
         <ToastContainer position="top-right" autoClose={4000} theme="dark" />
+        <DialogHost />
       </body>
     </html>
   );

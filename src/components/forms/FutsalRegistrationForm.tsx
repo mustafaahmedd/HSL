@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Card, Button, Input, Select } from '@/components/ui';
 import { useRouter } from 'next/navigation';
+import { toast } from 'react-toastify';
 
 interface FutsalRegistrationFormProps {
     eventId: string;
@@ -132,11 +133,11 @@ export default function FutsalRegistrationForm({ eventId, eventTitle, pricePerPe
                 }
                 router.push(`/events/${eventId}/register/success`);
             } else {
-                alert('Registration failed: ' + data.error);
+                toast.error('Registration failed: ' + data.error);
             }
         } catch (error) {
             console.error('Registration error:', error);
-            alert('Registration failed. Please try again.');
+            toast.error('Registration failed. Please try again.');
         } finally {
             setLoading(false);
         }

@@ -5,7 +5,8 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button } from '@/components/ui';
 import { IAuction } from '@/types/Auction';
-import { getCategoryConfig } from '@/lib/auctionConfig';
+import { getCategoryConfig, DEFAULT_TIMER_WARNING_PERCENT } from '@/lib/auctionConfig';
+import AuctionTimer from '@/components/ui/AuctionTimer';
 import PlayerPhoto from '@/components/ui/PlayerPhoto';
 
 export default function PublicAuctionDetails() {
@@ -15,6 +16,7 @@ export default function PublicAuctionDetails() {
     const [auction, setAuction] = useState<IAuction | null>(null);
     const [stats, setStats] = useState<any>(null);
     const [session, setSession] = useState<any>(null);
+    const [serverOffset, setServerOffset] = useState(0);
     const [currentPlayer, setCurrentPlayer] = useState<any>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -73,7 +75,7 @@ export default function PublicAuctionDetails() {
                 if (auction?.status === 'live' && (timerExpired || forceTimerExpired)) {
                     fetchAuctionDetails();
                 }
-            }, 5000);
+            }, 2000); // short poll so the audience sees a new player (and its timer) promptly
 
             return () => clearInterval(interval);
         }
@@ -90,6 +92,7 @@ export default function PublicAuctionDetails() {
                 setAuction(data.auction);
                 setStats(data.stats);
                 setSession(data.session);
+                if (data.serverTime) setServerOffset(data.serverTime - Date.now());
 
                 // Handle recent assignment notifications (only if timer expired or forced)
                 if (data.recentAssignment && (timerExpired || forceTimerExpired)) {
@@ -356,15 +359,26 @@ export default function PublicAuctionDetails() {
                                             )}
                                         </div>
 
+                                        {session?.biddingEndTime && (
+                                            <div className="flex justify-center mb-4">
+                                                <AuctionTimer
+                                                    startTime={session.biddingStartTime}
+                                                    endTime={session.biddingEndTime}
+                                                    serverOffsetMs={serverOffset}
+                                                    warningPercent={auction?.timerWarningPercent ?? DEFAULT_TIMER_WARNING_PERCENT}
+                                                />
+                                            </div>
+                                        )}
+
                                         {/* Pricing Details */}
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                             <div className="text-center p-3 bg-green-50 rounded-lg border border-green-200">
                                                 <div className="text-xs text-green-600 font-medium uppercase tracking-wide mb-1">Base Price</div>
-                                                <div className="text-lg font-bold text-green-700">PKR {getCategoryConfig(currentPlayer.approvedCategory || 'Silver').minBidPrice.toLocaleString()}</div>
+                                                <div className="text-lg font-bold text-green-700">PKR {getCategoryConfig(currentPlayer.approvedCategory || 'Silver', auction).minBidPrice.toLocaleString()}</div>
                                             </div>
                                             <div className="text-center p-3 bg-blue-50 rounded-lg border border-blue-200">
                                                 <div className="text-xs text-blue-600 font-medium uppercase tracking-wide mb-1">Bid Increment</div>
-                                                <div className="text-lg font-bold text-blue-700">PKR {getCategoryConfig(currentPlayer.approvedCategory || 'Silver').bidIncrement.toLocaleString()}</div>
+                                                <div className="text-lg font-bold text-blue-700">PKR {getCategoryConfig(currentPlayer.approvedCategory || 'Silver', auction).bidIncrement.toLocaleString()}</div>
                                             </div>
                                         </div>
                                     </div>

@@ -200,6 +200,7 @@ export async function PUT(request: NextRequest) {
       playerRole,
       playingStyle,
       position,
+      photoUrl,
     } = body;
 
     if (!registrationId) {
@@ -228,6 +229,7 @@ export async function PUT(request: NextRequest) {
     if (teamName !== undefined) updateData.teamName = teamName;
     if (teamId !== undefined) updateData.teamId = teamId;
     if (specialRequirements !== undefined) updateData.specialRequirements = specialRequirements;
+    if (photoUrl !== undefined) updateData.photoUrl = photoUrl;
     
     // Update payment information
     if (paymentStatus !== undefined) updateData.paymentStatus = paymentStatus;

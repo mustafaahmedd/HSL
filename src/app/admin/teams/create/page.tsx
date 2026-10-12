@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card, Button, Input, Select, NumberInput } from '@/components/ui';
 import { IEvent } from '@/types/Event';
 import { IRegistration } from '@/types/Registration';
+import { toast } from 'react-toastify';
 
 export default function CreateTeam() {
     const router = useRouter();
@@ -86,6 +87,18 @@ export default function CreateTeam() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (teamForm.eventType === 'auction') {
+            if (!teamForm.owner.trim()) {
+                toast.error('Team Owner is required for auction teams');
+                return;
+            }
+            if (!(teamForm.totalPoints > 0)) {
+                toast.error('Total Points must be greater than 0 for auction teams');
+                return;
+            }
+        }
+
         setLoading(true);
 
         try {
@@ -103,6 +116,7 @@ export default function CreateTeam() {
             // Add type-specific fields
             if (teamForm.eventType === 'auction') {
                 teamData.owner = teamForm.owner;
+                teamData.captain = teamForm.captain;
                 teamData.totalPoints = teamForm.totalPoints;
             } else {
                 teamData.captain = teamForm.captain;
@@ -122,14 +136,14 @@ export default function CreateTeam() {
             const data = await response.json();
 
             if (data.success) {
-                alert('Team created successfully!'); //change this alert to Toast
+                toast.success('Team created successfully!');
                 router.push('/admin/teams');
             } else {
-                alert('Failed to create team: ' + data.error);
+                toast.error('Failed to create team: ' + (data.error || data.message));
             }
         } catch (error) {
             console.error('Create team error:', error);
-            alert('Failed to create team. Please try again.');
+            toast.error('Failed to create team. Please try again.');
         } finally {
             setLoading(false);
         }
@@ -150,9 +164,9 @@ export default function CreateTeam() {
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header */}
                 <div className="mb-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900">Create New Team</h1>
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="min-w-0">
+                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Create New Team</h1>
                             <p className="text-gray-600">Add a new team for an event</p>
                         </div>
                         <Button
@@ -216,8 +230,8 @@ export default function CreateTeam() {
                                                         placeholder="Enter captain name"
                                                     />
                                                     <NumberInput
-                                                        label="Total Points/Budget"
-                                                        value={teamForm.totalPoints}
+                                                        label="Total Points/Budget *"
+                                                        value={teamForm.totalPoints || ''}
                                                         onChange={(e) => setTeamForm({ ...teamForm, totalPoints: Number(e.target.value) })}
                                                         required
                                                         placeholder="Enter total points"
@@ -285,8 +299,8 @@ export default function CreateTeam() {
                                                             }`}
                                                         onClick={() => togglePlayerSelection(registration._id?.toString() || '')}
                                                     >
-                                                        <div className="flex items-center justify-between">
-                                                            <div>
+                                                        <div className="flex items-center justify-between gap-3">
+                                                            <div className="min-w-0 break-words">
                                                                 <p className="font-semibold text-gray-900">{registration.name}</p>
                                                                 <p className="text-sm text-gray-600">
                                                                     {registration.playerRole} • {registration.playingStyle}
@@ -311,7 +325,7 @@ export default function CreateTeam() {
                                     </div>
 
                                     {/* Submit Buttons */}
-                                    <div className="flex space-x-4 pt-4">
+                                    <div className="flex flex-wrap gap-4 pt-4">
                                         <Button type="submit" variant="primary" loading={loading}>
                                             Create Team
                                         </Button>

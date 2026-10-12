@@ -21,6 +21,9 @@ export interface IAuction {
   players: Types.ObjectId[] | IPlayer[];
   teams: Types.ObjectId[] | ITeam[];
   totalRevenue: number;
+  categorySettings?: { name: string; minBidPrice?: number; bidIncrement?: number; timerSeconds?: number }[];
+  timerBufferSeconds?: number;
+  timerWarningPercent?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

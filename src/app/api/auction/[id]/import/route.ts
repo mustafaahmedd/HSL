@@ -123,6 +123,11 @@ export async function POST(
       { _id: auction._id },
       { $addToSet: { players: { $each: auctionPlayerIds } } }
     );
+    // Keep the event card's participant count in step with what's actually registered
+    await Event.updateOne(
+      { _id: auction.eventId },
+      { $set: { totalParticipants: await Registration.countDocuments({ eventId: auction.eventId }) } }
+    );
 
     return NextResponse.json({
       success: true,

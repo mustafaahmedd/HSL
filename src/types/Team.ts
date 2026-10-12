@@ -15,11 +15,15 @@ export interface IAuctionTeamPlayer {
   transactionDate: Date;
 }
 
+// Team.eventType mirrors its event's type (farmhouse / beach events map to 'activity').
+// It is copied at creation and re-synced when the event's type changes.
+export type TeamEventType = 'tournament' | 'competition' | 'auction' | 'activity';
+
 // Base Team Interface
 export interface ITeam {
   _id?: Types.ObjectId;
   eventId: Types.ObjectId;
-  eventType: 'tournament' | 'competition' | 'auction' | 'activity';
+  eventType: TeamEventType;
   title: string;
   captain?: string;
   entry?: 'paid' | 'unpaid';

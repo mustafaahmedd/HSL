@@ -13,6 +13,8 @@ interface PreviewRow {
   courseEnrolled: string;
   playerRole: string;
   photoUrl: string;
+  roleMatched: boolean;
+  courseMatched: boolean;
   action: 'new' | 'update';
   soldTo?: string;
 }
@@ -128,6 +130,11 @@ export default function PlayerImport({ auctionId, onImported }: { auctionId: str
             <span className="text-gray-600">
               · {preview.filter(p => p.action === 'new').length} new, {preview.filter(p => p.action === 'update').length} already imported
             </span>
+            {preview.some(p => !p.roleMatched || !p.courseMatched) && (
+              <span className="text-amber-700">
+                · {preview.filter(p => !p.roleMatched || !p.courseMatched).length} with a role/course kept as typed (highlighted) — fix later via Edit
+              </span>
+            )}
           </div>
 
           {warnings.length > 0 && (
@@ -162,8 +169,8 @@ export default function PlayerImport({ auctionId, onImported }: { auctionId: str
                     <td className="px-2 py-1">
                       <span className={`px-1.5 py-0.5 rounded ${CATEGORY_TAG[p.category] || ''}`}>{p.category}</span>
                     </td>
-                    <td className="px-2 py-1">{p.playerRole}</td>
-                    <td className="px-2 py-1">{p.courseEnrolled}</td>
+                    <td className={`px-2 py-1 ${p.roleMatched ? '' : 'bg-amber-50 text-amber-800'}`} title={p.roleMatched ? undefined : 'Not a standard role — kept as typed'}>{p.playerRole}</td>
+                    <td className={`px-2 py-1 ${p.courseMatched ? '' : 'bg-amber-50 text-amber-800'}`} title={p.courseMatched ? undefined : 'Not a standard course — kept as typed'}>{p.courseEnrolled}</td>
                     <td className="px-2 py-1">
                       {p.action === 'new' ? 'New' : p.soldTo ? `Update (sold to ${p.soldTo})` : 'Update'}
                     </td>

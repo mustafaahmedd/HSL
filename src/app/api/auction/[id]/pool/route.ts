@@ -4,7 +4,7 @@ import Auction from '@/models/Auction';
 import Registration from '@/models/Registration';
 import Team from '@/models/Team';
 import Event from '@/models/Event';
-import { CATEGORY_CONFIG } from '@/lib/auctionConfig';
+import { resolveCategorySettings } from '@/lib/auctionConfig';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +44,7 @@ export async function GET(
         auctionDate: auction.auctionDate,
         event: event ? { title: event.title, venue: event.venue } : null,
       },
-      categories: CATEGORY_CONFIG,
+      categories: resolveCategorySettings(auction),
       teams: teams.map((t: any) => ({
         _id: t._id,
         title: t.title,

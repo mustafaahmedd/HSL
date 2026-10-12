@@ -4,6 +4,8 @@ import Event from '@/models/Event';
 import { isAuthenticated } from '@/lib/auth';
 import { extractFiles, saveFiles } from '@/lib/upload';
 import { DEFAULT_PAYMENT_ACCOUNT } from '@/lib/constants';
+import { syncTeamsWithEventType } from '@/lib/teamSync';
+import Registration from '@/models/Registration';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,11 +36,20 @@ export async function GET(request: NextRequest) {
 
     const events = await Event.find(query)
       .sort({ startDate: -1 })
-      .limit(50);
+      .limit(50)
+      .lean();
+
+    // totalParticipants is a stored counter that drifts (e.g. sheet imports); report the real count
+    const counts = await Registration.aggregate([
+      { $match: { eventId: { $in: events.map((e: any) => e._id) } } },
+      { $group: { _id: '$eventId', count: { $sum: 1 } } },
+    ]);
+    const countByEvent = new Map(counts.map((c: any) => [c._id.toString(), c.count]));
+    const withCounts = events.map((e: any) => ({ ...e, totalParticipants: countByEvent.get(e._id.toString()) ?? 0 }));
 
     return NextResponse.json({
       success: true,
-      events
+      events: withCounts
     });
   } catch (error) {
     console.error('Get events error:', error);
@@ -218,6 +229,11 @@ export async function PUT(request: NextRequest) {
         { error: 'Event not found' },
         { status: 404 }
       );
+    }
+
+    // Teams copy the event type at creation; keep them in step (tournament → auction turns entry amount into points)
+    if (updates.eventType) {
+      await syncTeamsWithEventType(event._id, event.eventType);
     }
 
     console.log('Updated event:', event);

@@ -103,6 +103,7 @@ export async function GET(
       session,
       recentAssignment,
       stats,
+      serverTime: Date.now(),
     });
   } catch (error) {
     console.error('Error fetching public auction details:', error);

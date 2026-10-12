@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Card, Button, Select } from '@/components/ui';
 import { IRegistration } from '@/types/Registration';
 import { IEvent } from '@/types/Event';
+import { toast } from 'react-toastify';
+import { promptDialog, confirmDialog } from '@/components/ui/Dialogs';
 
 export default function AdminRegistrations() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -93,16 +95,21 @@ export default function AdminRegistrations() {
             if (data.success) {
                 fetchRegistrations();
             } else {
-                alert('Failed to update registration: ' + data.error);
+                toast.error('Failed to update registration: ' + data.error);
             }
         } catch (error) {
             console.error('Failed to update registration:', error);
-            alert('Failed to update registration');
+            toast.error('Failed to update registration');
         }
     };
 
     const deleteRegistration = async (registrationId: string) => {
-        if (!confirm('Are you sure you want to delete this registration?')) {
+        if (!(await confirmDialog({
+            title: 'Delete registration?',
+            message: 'This cannot be undone.',
+            confirmText: 'Delete',
+            danger: true,
+        }))) {
             return;
         }
 
@@ -119,11 +126,11 @@ export default function AdminRegistrations() {
             if (data.success) {
                 fetchRegistrations();
             } else {
-                alert('Failed to delete registration: ' + data.error);
+                toast.error('Failed to delete registration: ' + data.error);
             }
         } catch (error) {
             console.error('Failed to delete registration:', error);
-            alert('Failed to delete registration');
+            toast.error('Failed to delete registration');
         }
     };
 
@@ -293,8 +300,13 @@ export default function AdminRegistrations() {
                                                             <Button
                                                                 variant="secondary"
                                                                 size="sm"
-                                                                onClick={() => {
-                                                                    const reason = prompt('Rejection reason:');
+                                                                onClick={async () => {
+                                                                    const reason = await promptDialog({
+                                                                        title: 'Reject registration',
+                                                                        label: 'Rejection reason',
+                                                                        confirmText: 'Reject',
+                                                                        danger: true,
+                                                                    });
                                                                     if (reason) {
                                                                         updateRegistrationStatus(registration._id!.toString(), 'rejected', reason);
                                                                     }

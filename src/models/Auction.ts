@@ -72,6 +72,19 @@ const AuctionSchema = new Schema<IAuction>(
       type: Number,
       default: 0,
     },
+    // Per-tier overrides of CATEGORY_CONFIG (src/lib/auctionConfig.ts); missing values fall back to defaults
+    categorySettings: {
+      type: [{
+        _id: false,
+        name: { type: String, required: true },
+        minBidPrice: Number,
+        bidIncrement: Number,
+        timerSeconds: Number,
+      }],
+      default: undefined,
+    },
+    timerBufferSeconds: { type: Number },
+    timerWarningPercent: { type: Number },
   },
   {
     timestamps: true,

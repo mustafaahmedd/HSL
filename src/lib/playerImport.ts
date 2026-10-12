@@ -1,4 +1,5 @@
 import { CATEGORY_ORDER } from '@/lib/auctionConfig';
+import { normalizeRole, normalizeCourse } from '@/lib/playerOptions';
 
 // Parses the Google Form responses sheet, either downloaded as CSV or copy-pasted from Sheets (TSV).
 // Expected headers (matched case-insensitively, by substring):
@@ -15,6 +16,9 @@ export interface ImportRow {
   playerRole: string;
   photoUrl: string; // preview URL (proxied for Drive files)
   driveId?: string;
+  // false when the sheet value didn't match a standard option and was kept as typed
+  roleMatched: boolean;
+  courseMatched: boolean;
 }
 
 // Minimal RFC 4180 parser (quoted fields, embedded delimiters/newlines, "" escapes)
@@ -93,10 +97,14 @@ export const parsePlayerSheet = (text: string): { players: ImportRow[]; warnings
     if (!photo) warnings.push(`Row ${row} (${name}): no photo`);
 
     const driveId = driveIdOf(photo);
+    const role = normalizeRole(r[C.role] || '');
+    const course = normalizeCourse(r[C.course] || '');
     players.push({
       row, name, contactNo, category,
-      courseEnrolled: (r[C.course] || '').trim(),
-      playerRole: (r[C.role] || '').trim(),
+      courseEnrolled: course.value,
+      courseMatched: course.matched || !course.value,
+      playerRole: role.value,
+      roleMatched: role.matched || !role.value,
       photoUrl: driveId ? `/api/drive-photo?id=${driveId}` : photo,
       driveId,
     });

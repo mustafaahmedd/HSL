@@ -5,6 +5,8 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, Button, Input, Select } from '@/components/ui';
 import { IPlayer } from '@/types/Player';
+import { toast } from 'react-toastify';
+import { confirmDialog } from '@/components/ui/Dialogs';
 
 const categories = [
     { value: 'Platinum', label: 'Platinum' },
@@ -62,7 +64,7 @@ export default function PlayerDetail() {
                         category: foundPlayer.category,
                     });
                 } else {
-                    alert('Player not found');
+                    toast.error('Player not found');
                     router.push('/admin/players');
                 }
             }
@@ -93,20 +95,24 @@ export default function PlayerDetail() {
             if (data.success) {
                 setPlayer(data.player);
                 setEditing(false);
-                alert('Player updated successfully');
+                toast.success('Player updated');
             } else {
-                alert(data.error || 'Failed to update player');
+                toast.error(data.error || 'Failed to update player');
             }
         } catch (error) {
             console.error('Failed to update player:', error);
-            alert('Failed to update player');
+            toast.error('Failed to update player');
         }
     };
 
     const handleCreateFinalPlayer = async () => {
         if (!player) return;
 
-        if (!confirm(`Create final player for ${player.name}? This will add them to the auction pool.`)) {
+        if (!(await confirmDialog({
+            title: 'Create final player?',
+            message: `Create final player for ${player.name}? This will add them to the auction pool.`,
+            confirmText: 'Create',
+        }))) {
             return;
         }
 
@@ -131,14 +137,14 @@ export default function PlayerDetail() {
             const data = await response.json();
 
             if (data.success) {
-                alert(`Final player created for ${player.name}`);
+                toast.success(`Final player created for ${player.name}`);
                 await fetchPlayer();
             } else {
-                alert(data.error || 'Failed to create final player');
+                toast.error(data.error || 'Failed to create final player');
             }
         } catch (error) {
             console.error('Failed to create final player:', error);
-            alert('Failed to create final player');
+            toast.error('Failed to create final player');
         }
     };
 

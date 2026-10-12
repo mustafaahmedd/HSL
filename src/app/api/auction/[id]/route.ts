@@ -5,7 +5,13 @@ import Registration from '@/models/Registration';
 import Team from '@/models/Team';
 import Event from '@/models/Event';
 import { isAuthenticated } from '@/lib/auth';
-import { validateTeamCategoryQuota as validateQuota } from '@/lib/auctionConfig';
+import {
+  validateTeamCategoryQuota as validateQuota,
+  getCategoryConfig,
+  CATEGORY_ORDER,
+  DEFAULT_TIMER_BUFFER_SECONDS,
+} from '@/lib/auctionConfig';
+import { normalizeRole, normalizeCourse } from '@/lib/playerOptions';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +52,7 @@ export async function GET(
       .populate({
         path: 'players', 
         model: Registration,
-        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole playingStyle teamId playerId auctionStatus bidPrice teamName'
+        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole playingStyle courseEnrolled teamId playerId auctionStatus bidPrice teamName'
       });
     
       if (!auction) {
@@ -61,7 +67,7 @@ export async function GET(
       .populate({
         path: 'currentPlayerId',
         model: Registration,
-        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole playingStyle teamId playerId auctionStatus bidPrice teamName'
+        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole playingStyle courseEnrolled teamId playerId auctionStatus bidPrice teamName'
       })
       .populate('currentHighestBid')
       .populate('biddingHistory');
@@ -81,6 +87,7 @@ export async function GET(
       auction,
       session,
       stats,
+      serverTime: Date.now(), // lets clients correct for clock skew when rendering the bid timer
     });
   } catch (error) {
     console.error('Error fetching auction details:', error);
@@ -242,12 +249,74 @@ export async function PUT(
         if (!session) {
           session = new AuctionSession({ auctionId });
         }
-        const now = new Date();
+        // Timer starts after a short buffer so the room sees the player before the clock runs.
+        // biddingEndTime is left empty for tiers with no timer (timerSeconds = 0).
+        const { timerSeconds } = getCategoryConfig(registration.approvedCategory, auction);
+        const buffer = (auction.timerBufferSeconds ?? DEFAULT_TIMER_BUFFER_SECONDS) * 1000;
+        const start = new Date(Date.now() + buffer);
         session.currentPlayerId = registration._id as any;
-        session.biddingStartTime = now;
-        session.biddingEndTime = new Date(now.getTime() + (auction.timeLimitPerPlayer || 300) * 1000);
+        session.biddingStartTime = start;
+        session.biddingEndTime = timerSeconds > 0 ? new Date(start.getTime() + timerSeconds * 1000) : (undefined as any);
         session.isActive = true;
         await session.save();
+        break;
+      }
+
+      // Map free-text playing roles and courses onto the standard lists (src/lib/playerOptions.ts)
+      // for everyone in the pool plus the event's captains. Values that don't match are left alone.
+      case 'normalize_players': {
+        const regs = await Registration.find(
+          { $or: [{ _id: { $in: auction.players } }, { eventId: auction.eventId, approvedIconPlayer: true }] },
+          'playerRole courseEnrolled'
+        );
+        let updated = 0;
+        let unmatched = 0;
+        for (const r of regs as any[]) {
+          const role = normalizeRole(r.playerRole || '');
+          const course = normalizeCourse(r.courseEnrolled || '');
+          if ((r.playerRole && !role.matched) || (r.courseEnrolled && !course.matched)) unmatched++;
+          if (role.value !== (r.playerRole || '') || course.value !== (r.courseEnrolled || '')) {
+            await Registration.updateOne({ _id: r._id }, { $set: { playerRole: role.value, courseEnrolled: course.value } });
+            updated++;
+          }
+        }
+        return NextResponse.json({ success: true, updated, unmatched, total: regs.length });
+      }
+
+      // Restart the current player's timer from the top (same buffer + category duration)
+      case 'restart_timer': {
+        const session = await AuctionSession.findOne({ auctionId });
+        if (!session?.currentPlayerId) {
+          return NextResponse.json({ success: false, error: 'No player is up for bidding' }, { status: 400 });
+        }
+        const registration = await Registration.findById(session.currentPlayerId, 'approvedCategory');
+        const { timerSeconds } = getCategoryConfig(registration?.approvedCategory, auction);
+        const buffer = (auction.timerBufferSeconds ?? DEFAULT_TIMER_BUFFER_SECONDS) * 1000;
+        const start = new Date(Date.now() + buffer);
+        session.biddingStartTime = start;
+        session.biddingEndTime = timerSeconds > 0 ? new Date(start.getTime() + timerSeconds * 1000) : (undefined as any);
+        await session.save();
+        break;
+      }
+
+      // Per-category base price / increment / timer, plus timer buffer and warning threshold
+      case 'update_category_settings': {
+        const toNum = (v: any) => (v === '' || v === null || v === undefined || isNaN(Number(v)) ? undefined : Math.max(0, Number(v)));
+        const incoming: any[] = Array.isArray(data?.categorySettings) ? data.categorySettings : [];
+        auction.categorySettings = CATEGORY_ORDER.map(name => {
+          const c = incoming.find(x => x?.name === name) || {};
+          return {
+            name,
+            minBidPrice: toNum(c.minBidPrice),
+            bidIncrement: toNum(c.bidIncrement),
+            timerSeconds: toNum(c.timerSeconds),
+          };
+        });
+        if (data?.timerBufferSeconds !== undefined) auction.timerBufferSeconds = toNum(data.timerBufferSeconds);
+        if (data?.timerWarningPercent !== undefined) {
+          const pct = toNum(data.timerWarningPercent);
+          auction.timerWarningPercent = pct === undefined ? undefined : Math.min(100, pct);
+        }
         break;
       }
 
@@ -650,7 +719,7 @@ export async function PUT(
       .populate({
         path: 'players',
         model: Registration,
-        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole playingStyle teamId playerId auctionStatus bidPrice teamName'
+        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole playingStyle courseEnrolled teamId playerId auctionStatus bidPrice teamName'
       })
       .populate({
         path: 'teams',

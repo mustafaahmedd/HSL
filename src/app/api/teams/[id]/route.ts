@@ -3,6 +3,18 @@ import dbConnect from '@/lib/mongodb';
 import Team from '@/models/Team';
 import Registration from '@/models/Registration';
 import { isAuthenticated } from '@/lib/auth';
+import { syncTeamsWithEventType, teamNeedsSync } from '@/lib/teamSync';
+
+// Load a team, first re-syncing it (and its event's other teams) if the event's type changed since creation.
+async function findSyncedTeam(id: string, eventFields: string) {
+  const team: any = await Team.findById(id).populate('eventId', eventFields);
+  const ev = team?.eventId;
+  if (ev?._id && teamNeedsSync(team, ev.eventType)) {
+    await syncTeamsWithEventType(ev._id, ev.eventType);
+    return Team.findById(id).populate('eventId', eventFields);
+  }
+  return team;
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -15,8 +27,7 @@ export async function GET(
     await dbConnect();
     const { id } = await params;
     
-    const team = await Team.findById(id)
-      .populate('eventId', 'title eventType sport startDate venue');
+    const team = await findSyncedTeam(id, 'title eventType sport startDate venue');
 
     if (!team) {
       return NextResponse.json(
@@ -81,14 +92,15 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    // Find the team
-    const team = await Team.findById(id);
+    // Find the team (synced, so captain matching sees the event's current type)
+    const team = await findSyncedTeam(id, 'eventType');
     if (!team) {
       return NextResponse.json(
         { error: 'Team not found' },
         { status: 404 }
       );
     }
+    team.depopulate('eventId'); // keep the response shape (eventId as an id) unchanged
 
     // Update team fields
     if (body.captain !== undefined) {

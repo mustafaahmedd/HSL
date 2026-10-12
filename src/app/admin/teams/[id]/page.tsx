@@ -5,6 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import { Card, Button } from '@/components/ui';
 import { ITeam } from '@/types/Team';
 import PlayerPhoto from '@/components/ui/PlayerPhoto';
+import { toast } from 'react-toastify';
+import { teamTypeOf, pointsLeftOf, formatPoints } from '../teamUtils';
 
 export default function TeamDetail() {
     const params = useParams();
@@ -39,12 +41,12 @@ export default function TeamDetail() {
             if (data.success) {
                 setTeam(data.team);
             } else {
-                alert('Failed to fetch team');
+                toast.error('Failed to fetch team');
                 router.push('/admin/teams');
             }
         } catch (error) {
             console.error('Failed to fetch team:', error);
-            alert('Failed to fetch team');
+            toast.error('Failed to fetch team');
             router.push('/admin/teams');
         } finally {
             setLoading(false);
@@ -82,15 +84,17 @@ export default function TeamDetail() {
         );
     }
 
+    const teamType = teamTypeOf(team);
+
     return (
         <div className="min-h-screen bg-gray-50">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 {/* Header */}
                 <div className="mb-6">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900">{team.name}</h1>
-                            <p className="text-gray-600">{team.eventId?.title || 'Unknown Event'}</p>
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div className="min-w-0">
+                            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">{team.title}</h1>
+                            <p className="text-gray-600 break-words">{team.eventId?.title || 'Unknown Event'}</p>
                         </div>
                         <Button
                             variant="secondary"
@@ -117,34 +121,40 @@ export default function TeamDetail() {
                                     <div>
                                         <p className="text-sm text-gray-600">Event Type</p>
                                         <p className="text-base font-semibold text-gray-900 capitalize">
-                                            {team.eventType}
+                                            {teamType}
                                         </p>
                                     </div>
 
-                                    {team.eventType === 'auction' ? (
+                                    {teamType === 'auction' ? (
                                         <>
                                             <div>
                                                 <p className="text-sm text-gray-600">Owner</p>
-                                                <p className="text-base font-semibold text-gray-900">{team.owner}</p>
+                                                <p className="text-base font-semibold text-gray-900 break-words">{team.owner || '—'}</p>
                                             </div>
                                             <div>
                                                 <p className="text-sm text-gray-600">Total Points</p>
                                                 <p className="text-base font-semibold text-gray-900">
-                                                    {team.totalPoints?.toLocaleString()}
+                                                    {formatPoints(team.totalPoints)}
                                                 </p>
                                             </div>
                                             <div>
                                                 <p className="text-sm text-gray-600">Points Spent</p>
                                                 <p className="text-base font-semibold text-red-600">
-                                                    {team.pointsSpent?.toLocaleString()}
+                                                    {formatPoints(team.pointsSpent || 0)}
                                                 </p>
                                             </div>
                                             <div>
                                                 <p className="text-sm text-gray-600">Points Left</p>
                                                 <p className="text-base font-semibold text-green-600">
-                                                    {team.pointsLeft?.toLocaleString()}
+                                                    {formatPoints(pointsLeftOf(team))}
                                                 </p>
                                             </div>
+                                            {team.captain && (
+                                                <div>
+                                                    <p className="text-sm text-gray-600">Captain</p>
+                                                    <p className="text-base font-semibold text-gray-900 break-words">{team.captain}</p>
+                                                </div>
+                                            )}
                                         </>
                                     ) : (
                                         <>
@@ -204,10 +214,10 @@ export default function TeamDetail() {
                                                 key={player.registrationId?.toString() || index}
                                                 className="border rounded-lg p-4 hover:bg-gray-50"
                                             >
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex-1">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div className="flex-1 min-w-0 break-words">
                                                         <h3 className="text-lg font-semibold text-gray-900">
-                                                            {player.registration?.name || 'Unknown Player'}
+                                                            {player.registration?.name || player.playerName || 'Unknown Player'}
                                                         </h3>
                                                         <div className="mt-2 space-y-1">
                                                             {player.registration?.playerRole && (
@@ -238,7 +248,7 @@ export default function TeamDetail() {
                                                         </div>
 
                                                         {/* Auction specific info */}
-                                                        {team.eventType === 'auction' && player.purchasePrice && (
+                                                        {teamType === 'auction' && player.purchasePrice > 0 && (
                                                             <div className="mt-3 pt-3 border-t">
                                                                 <p className="text-sm text-gray-600">
                                                                     <strong>Purchase Price:</strong>{' '}
@@ -263,7 +273,7 @@ export default function TeamDetail() {
 
                                                     {/* Player Photo */}
                                                     {player.registration?.photoUrl && (
-                                                        <div className="ml-4">
+                                                        <div className="shrink-0">
                                                             <PlayerPhoto
                                                                 src={player.registration.photoUrl}
                                                                 name={player.registration.name}

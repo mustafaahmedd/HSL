@@ -2,10 +2,35 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { Card, Button, Input, Select, Pagination, exportToPDF } from '@/components/ui';
+import { toast } from 'react-toastify';
+import { Card, Button, Input, Select, Pagination, FileUpload, exportToPDF } from '@/components/ui';
 import { IRegistration } from '@/types/Registration';
 import { IEvent } from '@/types/Event';
 import PlayerPhoto from '@/components/ui/PlayerPhoto';
+import { confirmDialog } from '@/components/ui/Dialogs';
+import { CATEGORY_ORDER } from '@/lib/auctionConfig';
+import { PLAYER_ROLES, COURSES } from '@/lib/playerOptions';
+
+// Category choices for this page: captains plus the auction tiers (in auction order).
+const CATEGORY_OPTIONS = ['Captain', ...CATEGORY_ORDER];
+
+const categoryBadgeClass = (category?: string) => {
+    switch (category) {
+        case 'Captain': return 'bg-green-100 text-green-800';
+        case 'Platinum': return 'bg-indigo-100 text-indigo-800';
+        case 'Gold': return 'bg-yellow-100 text-yellow-800';
+        case 'Silver': return 'bg-slate-200 text-slate-800';
+        default: return 'bg-gray-100 text-gray-700';
+    }
+};
+
+// <option>s for a list of values; a current value outside the list is kept as an extra option so it isn't lost.
+const SelectOptions: React.FC<{ options: string[]; value?: string }> = ({ options, value }) => (
+    <>
+        {options.map(o => <option key={o} value={o}>{o}</option>)}
+        {value && !options.includes(value) && <option value={value}>{`${value} (unmapped)`}</option>}
+    </>
+);
 
 // Copy Button Component
 const CopyButton: React.FC<{ text: string }> = ({ text }) => {
@@ -234,7 +259,7 @@ export default function EventParticipants() {
 
         // Category filter
         if (filterCategory !== 'all') {
-            filtered = filtered.filter(reg => reg.approvedCategory === filterCategory);
+            filtered = filtered.filter(reg => (reg.approvedCategory || '') === filterCategory);
         }
 
         setFilteredRegistrations(filtered);
@@ -308,11 +333,11 @@ export default function EventParticipants() {
                 setEditForm({});
                 fetchEventRegistrations();
             } else {
-                alert('Failed to update registration: ' + data.error);
+                toast.error('Failed to update registration: ' + data.error);
             }
         } catch (error) {
             console.error('Failed to update registration:', error);
-            alert('Failed to update registration');
+            toast.error('Failed to update registration');
         }
     };
 
@@ -330,21 +355,27 @@ export default function EventParticipants() {
             if (data.success) {
                 fetchEventRegistrations();
             } else {
-                alert('Failed to delete registration: ' + (data.error || 'Unknown error'));
+                toast.error('Failed to delete registration: ' + (data.error || 'Unknown error'));
             }
         } catch (error) {
             console.error('Failed to delete registration:', error);
-            alert('Failed to delete registration');
+            toast.error('Failed to delete registration');
         }
     };
 
     const handleBulkStatusUpdate = async (newStatus: 'approved' | 'rejected') => {
         if (selectedRegistrationIds.length === 0) {
-            alert('Please select at least one registration');
+            toast.error('Please select at least one registration');
             return;
         }
 
-        if (!confirm(`Are you sure you want to ${newStatus === 'approved' ? 'approve' : 'reject'} ${selectedRegistrationIds.length} registration(s)?`)) {
+        const verb = newStatus === 'approved' ? 'approve' : 'reject';
+        if (!(await confirmDialog({
+            title: `${verb === 'approve' ? 'Approve' : 'Reject'} ${selectedRegistrationIds.length} registration(s)?`,
+            message: `Are you sure you want to ${verb} ${selectedRegistrationIds.length} registration(s)?`,
+            confirmText: verb === 'approve' ? 'Approve' : 'Reject',
+            danger: newStatus === 'rejected',
+        }))) {
             return;
         }
 
@@ -371,10 +402,9 @@ export default function EventParticipants() {
             setSelectedRegistrationIds([]);
             setShowBulkActions(false);
             fetchEventRegistrations();
-            // alert(`Successfully ${newStatus} ${selectedRegistrationIds.length} registration(s)`);
         } catch (error) {
             console.error('Failed to update registrations:', error);
-            alert('Failed to update registrations');
+            toast.error('Failed to update registrations');
         }
     };
 
@@ -505,7 +535,7 @@ export default function EventParticipants() {
 
         if (exportFilters.category !== 'all') {
             exportData = exportData.filter(reg =>
-                reg.approvedCategory === exportFilters.category
+                (reg.approvedCategory || '') === exportFilters.category
             );
         }
 
@@ -755,9 +785,8 @@ export default function EventParticipants() {
                                         className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                                     >
                                         <option value="all">Category: All</option>
-                                        <option value="Platinum">Platinum</option>
-                                        <option value="Diamond">Diamond</option>
-                                        <option value="Gold">Gold</option>
+                                        <option value="">Category: None</option>
+                                        <SelectOptions options={CATEGORY_OPTIONS} />
                                     </select>
                                 </div>
 
@@ -843,14 +872,11 @@ export default function EventParticipants() {
                                         }
                                         setSelectedRegistrationIds([]);
                                         fetchEventRegistrations();
-                                        // alert(`Category updated for participants`);
                                         e.target.value = "";
                                     }}
                                 >
                                     <option value="">Bulk Category</option>
-                                    <option value="Platinum">Platinum</option>
-                                    <option value="Diamond">Diamond</option>
-                                    <option value="Gold">Gold</option>
+                                    <SelectOptions options={CATEGORY_OPTIONS} />
                                 </select>
                                 <Button
                                     variant="secondary"
@@ -952,7 +978,7 @@ export default function EventParticipants() {
                                                                 </span>
                                                             )} */}
                                                             {registration.selfAssignedCategory && (
-                                                                <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                                                <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${categoryBadgeClass(registration.approvedCategory)}`}>
                                                                     {registration.approvedCategory}
                                                                 </span>
                                                             )}
@@ -1021,27 +1047,19 @@ export default function EventParticipants() {
                                                         <Button
                                                             size="sm"
                                                             variant="danger"
-                                                            onClick={() => {
-                                                                if (
-                                                                    confirm(
-                                                                        `Are you sure you want to delete the registration for "${registration.name}"? This action cannot be undone.`
-                                                                    )
-                                                                ) {
+                                                            onClick={async () => {
+                                                                if (await confirmDialog({
+                                                                    title: 'Delete registration?',
+                                                                    message: `Delete the registration for "${registration.name}"? This cannot be undone.`,
+                                                                    confirmText: 'Delete',
+                                                                    danger: true,
+                                                                })) {
                                                                     deleteRegistration(registration._id!.toString());
                                                                 }
                                                             }}
                                                         >
                                                             Delete
                                                         </Button>
-                                                        {/* <select
-                                                            value={editForm.approvedCategory || ''}
-                                                            onChange={(e) => setEditForm({ ...editForm, approvedCategory: e.target.value })}
-                                                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                                        >
-                                                            <option value="Platinum">Platinum</option>
-                                                            <option value="Diamond">Diamond</option>
-                                                            <option value="Gold">Gold</option>
-                                                        </select> */}
                                                     </div>
                                                 </td>
                                             </tr>
@@ -1164,7 +1182,7 @@ export default function EventParticipants() {
                                                                     </span>
                                                                 )} */}
                                                                 {registration.selfAssignedCategory && (
-                                                                    <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
+                                                                    <span className={`px-2 py-1 text-xs font-medium rounded-full ${categoryBadgeClass(registration.approvedCategory)}`}>
                                                                         {registration.approvedCategory}
                                                                     </span>
                                                                 )}
@@ -1207,8 +1225,13 @@ export default function EventParticipants() {
                                                                 <Button
                                                                     variant="secondary"
                                                                     size="sm"
-                                                                    onClick={() => {
-                                                                        if (confirm('Are you sure you want to reject this registration?')) {
+                                                                    onClick={async () => {
+                                                                        if (await confirmDialog({
+                                                                            title: 'Reject registration?',
+                                                                            message: `Reject the registration for "${registration.name}"?`,
+                                                                            confirmText: 'Reject',
+                                                                            danger: true,
+                                                                        })) {
                                                                             updateRegistration(registration._id!.toString(), {
                                                                                 status: 'rejected'
                                                                             });
@@ -1221,12 +1244,13 @@ export default function EventParticipants() {
                                                             <Button
                                                                 variant="danger"
                                                                 size="sm"
-                                                                onClick={() => {
-                                                                    if (
-                                                                        confirm(
-                                                                            `Are you sure you want to delete the registration for "${registration.name}"? This action cannot be undone.`
-                                                                        )
-                                                                    ) {
+                                                                onClick={async () => {
+                                                                    if (await confirmDialog({
+                                                                        title: 'Delete registration?',
+                                                                        message: `Delete the registration for "${registration.name}"? This cannot be undone.`,
+                                                                        confirmText: 'Delete',
+                                                                        danger: true,
+                                                                    })) {
                                                                         deleteRegistration(registration._id!.toString());
                                                                     }
                                                                 }}
@@ -1251,7 +1275,7 @@ export default function EventParticipants() {
                                                             </select>
                                                             <div className="flex items-center">
                                                                 <select
-                                                                    value={registration.approvedCategory}
+                                                                    value={registration.approvedCategory || ''}
                                                                     onChange={async (e) => {
                                                                         await updateRegistration(registration._id!.toString(), {
                                                                             approvedCategory: e.target.value,
@@ -1260,9 +1284,8 @@ export default function EventParticipants() {
                                                                     className="ml-2 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                                                                     style={{ width: 100 }}
                                                                 >
-                                                                    <option value="Platinum">Platinum</option>
-                                                                    <option value="Diamond">Diamond</option>
-                                                                    <option value="Gold">Gold</option>
+                                                                    <option value="">None</option>
+                                                                    <SelectOptions options={CATEGORY_OPTIONS} value={registration.approvedCategory} />
                                                                 </select>
                                                             </div>
                                                         </div>
@@ -1345,12 +1368,49 @@ export default function EventParticipants() {
 
                 {/* Edit Modal */}
                 {editingRegistration && (
-                    <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-                        <div className="relative edit-registration-dark-mode top-10 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white max-h-[90vh] overflow-y-auto">
-                            <div className="mt-3">
+                    <div className="fixed inset-0 z-50 overflow-y-auto bg-gray-600/50 p-2 sm:p-4">
+                        <div className="relative edit-registration-dark-mode mx-auto my-2 sm:my-8 w-full max-w-4xl min-w-0 overflow-x-hidden rounded-md border bg-white p-4 sm:p-5 shadow-lg">
+                            <div className="mt-1 sm:mt-3">
                                 <h3 className="text-lg font-medium text-gray-900 mb-4">Edit Registration Details</h3>
 
                                 <div className="space-y-4">
+                                    {/* Photo */}
+                                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                                        <div className="flex shrink-0 flex-col items-center gap-2">
+                                            <PlayerPhoto
+                                                key={editForm.photoUrl || 'none'}
+                                                src={editForm.photoUrl}
+                                                name={editForm.name}
+                                                className="h-24 w-24 rounded-full object-cover border border-gray-200"
+                                            />
+                                            {editForm.photoUrl && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setEditForm((f: any) => ({ ...f, photoUrl: '' }))}
+                                                    className="text-xs text-red-600 hover:underline"
+                                                >
+                                                    Remove photo
+                                                </button>
+                                            )}
+                                        </div>
+                                        <div className="min-w-0 flex-1">
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Change Photo
+                                            </label>
+                                            <FileUpload
+                                                category="registrations"
+                                                onFilesUploaded={(files) => {
+                                                    const url = files[0]?.url;
+                                                    if (url) {
+                                                        setEditForm((f: any) => ({ ...f, photoUrl: url }));
+                                                        toast.success('Photo uploaded. Save changes to apply it.');
+                                                    }
+                                                }}
+                                                onError={(err) => toast.error(err)}
+                                            />
+                                        </div>
+                                    </div>
+
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1374,10 +1434,14 @@ export default function EventParticipants() {
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
                                                 Course Enrolled
                                             </label>
-                                            <Input
+                                            <select
                                                 value={editForm.courseEnrolled || ''}
                                                 onChange={(e) => setEditForm({ ...editForm, courseEnrolled: e.target.value })}
-                                            />
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="">Select course</option>
+                                                <SelectOptions options={COURSES} value={editForm.courseEnrolled} />
+                                            </select>
                                         </div>
                                         <div>
                                             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1417,17 +1481,19 @@ export default function EventParticipants() {
                                                 />
                                             </div>
                                         )}
-                                        {editForm.playerRole && (
-                                            <div>
-                                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                                    Player Role
-                                                </label>
-                                                <Input
-                                                    value={editForm.playerRole || ''}
-                                                    onChange={(e) => setEditForm({ ...editForm, playerRole: e.target.value })}
-                                                />
-                                            </div>
-                                        )}
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                                                Playing Role
+                                            </label>
+                                            <select
+                                                value={editForm.playerRole || ''}
+                                                onChange={(e) => setEditForm({ ...editForm, playerRole: e.target.value })}
+                                                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            >
+                                                <option value="">Select role</option>
+                                                <SelectOptions options={PLAYER_ROLES} value={editForm.playerRole} />
+                                            </select>
+                                        </div>
                                         {editForm.playingStyle && (
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1498,9 +1564,8 @@ export default function EventParticipants() {
                                                 onChange={(e) => setEditForm({ ...editForm, approvedCategory: e.target.value })}
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             >
-                                                <option value="Platinum">Platinum</option>
-                                                <option value="Diamond">Diamond</option>
-                                                <option value="Gold">Gold</option>
+                                                <option value="">None</option>
+                                                <SelectOptions options={CATEGORY_OPTIONS} value={editForm.approvedCategory} />
                                             </select>
                                         </div>
                                         <div>
@@ -1557,7 +1622,7 @@ export default function EventParticipants() {
                                             placeholder="Add admin notes here..."
                                         />
                                     </div>
-                                    <div className="flex gap-2 justify-end pt-4 border-t">
+                                    <div className="flex flex-wrap gap-2 justify-end pt-4 border-t">
                                         <Button
                                             variant="secondary"
                                             onClick={() => {
@@ -1700,9 +1765,8 @@ export default function EventParticipants() {
                                                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                                             >
                                                 <option value="all">All</option>
-                                                <option value="Platinum">Platinum</option>
-                                                <option value="Diamond">Diamond</option>
-                                                <option value="Gold">Gold</option>
+                                                <option value="">None</option>
+                                                <SelectOptions options={CATEGORY_OPTIONS} />
                                             </select>
                                         </div>
                                     </div>

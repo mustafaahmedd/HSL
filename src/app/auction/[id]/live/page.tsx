@@ -7,6 +7,7 @@ import { Card, Button, Input, Select } from '@/components/ui';
 import { IAuction, IBid, IAuctionSession } from '@/types/Auction';
 import { IPlayer } from '@/types/Player';
 import { ITeam } from '@/types/Team';
+import { toast } from 'react-toastify';
 
 export default function PublicAuctionView() {
     const router = useRouter();
@@ -93,7 +94,7 @@ export default function PublicAuctionView() {
 
     const handlePlaceBid = async () => {
         if (!selectedTeam || !bidAmount) {
-            alert('Please select a team and enter bid amount');
+            toast.error('Please select a team and enter bid amount');
             return;
         }
 
@@ -118,11 +119,11 @@ export default function PublicAuctionView() {
                 setBidAmount(data.bid.amount + (auction?.biddingIncrement || 50));
                 fetchAuctionData();
             } else {
-                alert(data.error || 'Failed to place bid');
+                toast.error(data.error || 'Failed to place bid');
             }
         } catch (error) {
             console.error('Failed to place bid:', error);
-            alert('Failed to place bid');
+            toast.error('Failed to place bid');
         }
     };
 
