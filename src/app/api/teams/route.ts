@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import Team from '@/models/Team';
 import Event from '@/models/Event';
+import Auction from '@/models/Auction';
 import { isAuthenticated } from '@/lib/auth';
 import { syncTeamsWithEventType, teamNeedsSync, toTeamEventType } from '@/lib/teamSync';
 
@@ -274,6 +275,9 @@ export async function DELETE(request: NextRequest) {
         { status: 404 }
       );
     }
+
+    // Don't leave a dangling reference: auction team counts drive the per-category caps
+    await Auction.updateMany({ teams: team._id }, { $pull: { teams: team._id } });
 
     return NextResponse.json({
       success: true,

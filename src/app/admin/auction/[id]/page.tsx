@@ -249,13 +249,19 @@ export default function AuctionManagement() {
 
             if (result.success) {
                 fetchAuctionData();
-            } else {
-                console.error('Failed to update auction:', result.error);
+                return true;
             }
+            toast.error(result.error || 'Failed to update auction');
         } catch (error) {
             console.error('Failed to update auction:', error);
+            toast.error('Failed to update auction');
         }
+        return false;
     };
+
+    // Full squad = captain + each category's per-team cap (or the team's own maxPlayers if set)
+    const squadSize = (team: any) => team?.maxPlayers || (!auction?.teams?.length ? 1 : Math.max(1,
+        1 + CATEGORY_ORDER.reduce((sum, cat) => sum + getCategoryQuota(cat, auction.players, auction.teams.length), 0)));
 
     // Teams offered in "Add Teams": same event as this auction, not already added
     const auctionEventId = ((auction?.eventId as any)?._id || auction?.eventId)?.toString();
@@ -263,6 +269,31 @@ export default function AuctionManagement() {
         ((team.eventId?._id || team.eventId)?.toString() === auctionEventId) &&
         !auction?.teams.some((t: any) => (t._id || t).toString() === team._id?.toString())
     );
+
+    const handleStartAuction = async () => {
+        const ok = await confirmDialog({
+            title: 'Start the auction?',
+            message: 'Bidding controls appear on this page: pick a category, bring up players, and assign each to a team. You can still undo everything later with Reset Auction.',
+            confirmText: 'Start auction',
+        });
+        if (!ok) return;
+        if (await handleAuctionAction('start_auction')) {
+            toast.success('Auction is live — pick a category below to begin');
+        }
+    };
+
+    const handleEndAuction = async () => {
+        const ok = await confirmDialog({
+            title: 'End the auction?',
+            message: 'Marks the auction completed and hides the bidding controls. Sold players and team purses stay as they are.',
+            confirmText: 'End auction',
+            danger: true,
+        });
+        if (!ok) return;
+        if (await handleAuctionAction('end_auction')) {
+            toast.success('Auction ended');
+        }
+    };
 
     const handleNormalizePlayers = async () => {
         const ok = await confirmDialog({
@@ -834,6 +865,16 @@ export default function AuctionManagement() {
                         </span>
                     </div>
                     <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
+                        {auction.status === 'upcoming' && (
+                            <Button className="w-full sm:w-auto bg-green-600! hover:bg-green-700!" onClick={handleStartAuction}>
+                                ▶ Start Auction
+                            </Button>
+                        )}
+                        {auction.status === 'live' && (
+                            <Button variant="secondary" className="w-full sm:w-auto" onClick={handleEndAuction}>
+                                End Auction
+                            </Button>
+                        )}
                         <Button
                             className="w-full sm:w-auto"
                             onClick={async () => {
@@ -1066,6 +1107,15 @@ export default function AuctionManagement() {
                             )}
                         </div>
                     </Card>
+                )}
+
+                {auction.status === 'upcoming' && (
+                    <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-green-200 bg-green-50 p-4">
+                        <p className="text-sm text-green-900">
+                            <span className="font-semibold">Bidding opens when the auction is started.</span> Match captains first, then start — the category picker and current-player panel appear here.
+                        </p>
+                        <Button className="shrink-0 bg-green-600! hover:bg-green-700!" onClick={handleStartAuction}>▶ Start Auction</Button>
+                    </div>
                 )}
 
                 {/* Category Moderation - Moved Before Live Auction */}
@@ -1494,26 +1544,32 @@ export default function AuctionManagement() {
                                     Match Successful!
                                 </h2>
 
-                                {/* Matched Pair Details */}
-                                <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-6 mb-6">
-                                    <div className="flex items-center justify-center gap-4 text-lg">
-                                        <div className="flex-1 text-center">
+                                {/* Matched Pair Details: captain → team */}
+                                <div className="bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl p-4 sm:p-6 mb-6">
+                                    <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                                        <div className="flex-1 text-center min-w-0">
                                             <PlayerPhoto
                                                 src={lastMatchedPair.photoUrl}
                                                 name={lastMatchedPair.captain}
-                                                className="w-32 h-32 rounded-full object-cover mx-auto mb-2 border-4 border-purple-300"
+                                                className="w-28 h-28 rounded-full object-cover mx-auto mb-2 border-4 border-purple-300"
                                             />
-                                            <div className="font-bold text-purple-700 text-xl">{lastMatchedPair.captain}</div>
-                                            <div className="text-sm text-gray-600">Captain</div>
+                                            <div className="text-xs font-semibold uppercase tracking-wide text-purple-500">Captain</div>
+                                            <div className="font-bold text-purple-800 text-xl break-words">{lastMatchedPair.captain}</div>
                                         </div>
 
-                                        <div className="text-3xl">→</div>
+                                        <svg className="w-10 h-10 shrink-0 text-gray-400 rotate-90 sm:rotate-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                        </svg>
 
-                                        <div className="flex-1 text-left">
-                                            <div className="font-bold text-blue-700 text-xl">{lastMatchedPair.owner}</div>
-                                            <div className="text-sm text-gray-600">Owner</div>
-                                            <div className="font-bold text-blue-700 text-xl">{lastMatchedPair.team}</div>
-
+                                        <div className="flex-1 text-center min-w-0">
+                                            <div className="w-28 h-28 mx-auto mb-2 rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 border-4 border-blue-200 flex items-center justify-center text-white text-4xl font-extrabold">
+                                                {lastMatchedPair.team?.slice(0, 2).toUpperCase()}
+                                            </div>
+                                            <div className="text-xs font-semibold uppercase tracking-wide text-blue-500">Team</div>
+                                            <div className="font-bold text-blue-800 text-xl break-words">{lastMatchedPair.team}</div>
+                                            <div className="text-sm text-gray-700 mt-1">
+                                                Owner: <span className="font-semibold text-gray-900">{lastMatchedPair.owner || '—'}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
@@ -1536,7 +1592,11 @@ export default function AuctionManagement() {
                                     onClick={() => setShowSuccessModal(false)}
                                     className="w-full text-lg py-3"
                                 >
-                                    {shuffledCaptainQueue.length > 0 ? '👉 Continue to Next Match' : '🎊 All Done!'}
+                                    {shuffledCaptainQueue.length > 0 && shuffledTeamQueue.length > 0
+                                        ? '👉 Continue to Next Match'
+                                        : shuffledCaptainQueue.length > 0
+                                            ? `Done — no teams left (${shuffledCaptainQueue.length} captains unassigned)`
+                                            : '🎊 All Done!'}
                                 </Button>
                             </div>
                         </div>
@@ -1948,13 +2008,19 @@ export default function AuctionManagement() {
                                     <div className="pt-3 border-t border-gray-100">
                                         <div className="flex justify-between items-center">
                                             <span className="text-xs text-gray-500">Players</span>
-                                            <span className="text-xs font-medium text-blue-600">{(team.players || []).length}{team.maxPlayers ? ` / ${team.maxPlayers}` : ''}</span>
+                                            <span className="text-xs font-medium text-blue-600">{(team.players || []).length} / {squadSize(team)}</span>
                                         </div>
                                         <div className="mt-2 bg-gray-200 rounded-full h-2 overflow-hidden">
                                             <div
                                                 className="bg-blue-600 h-full transition-all"
-                                                style={{ width: `${Math.min(100, ((team.pointsSpent || 0) / (team.totalPoints || 1)) * 100)}%` }}
+                                                style={{ width: `${Math.min(100, ((team.players || []).length / squadSize(team)) * 100)}%` }}
                                             />
+                                        </div>
+                                        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-600">
+                                            <span>Captain {(team.players || []).some((p: any) => p.category === 'Captain') ? '1/1' : '0/1'}</span>
+                                            {CATEGORY_ORDER.map(cat => (
+                                                <span key={cat}>{cat} {countTeamCategory(team, cat)}/{getCategoryQuota(cat, auction.players, auction.teams.length)}</span>
+                                            ))}
                                         </div>
                                     </div>
                                 </div>
