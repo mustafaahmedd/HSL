@@ -30,7 +30,7 @@ export async function GET(
       .populate({
         path: 'players', 
         model: Registration,
-        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole playingStyle teamId playerId auctionStatus bidPrice teamName'
+        select: 'name status photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole playingStyle teamId playerId auctionStatus bidPrice teamName'
       });
     
     if (!auction) {
@@ -62,7 +62,7 @@ export async function GET(
       .populate({
         path: 'currentPlayerId',
         model: Registration,
-        select: 'name status contactNo photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole teamId playerId auctionStatus bidPrice teamName'
+        select: 'name status photoUrl skillLevel iconPlayerRequest approvedIconPlayer selfAssignedCategory approvedCategory approvedSkillLevel playerRole teamId playerId auctionStatus bidPrice teamName'
       });
 
     // Get the most recent assignment (last 10 seconds) for notification purposes
@@ -97,9 +97,16 @@ export async function GET(
       totalRevenue: auction.totalRevenue || 0,
     };
 
+    // Public endpoint: never expose phone numbers (team rosters snapshot contactNo at purchase time)
+    const publicAuction: any = auction.toObject();
+    publicAuction.teams = (publicAuction.teams || []).map((t: any) => ({
+      ...t,
+      players: (Array.isArray(t.players) ? t.players : []).map(({ contactNo, ...rest }: any) => rest),
+    }));
+
     return NextResponse.json({
       success: true,
-      auction,
+      auction: publicAuction,
       session,
       recentAssignment,
       stats,

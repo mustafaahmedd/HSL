@@ -131,7 +131,11 @@ export default function AuctionDashboard() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-        body: JSON.stringify(auctionForm),
+        // datetime-local has no timezone; convert in the browser so the server (often UTC) stores the intended moment
+        body: JSON.stringify({
+          ...auctionForm,
+          auctionDate: auctionForm.auctionDate ? new Date(auctionForm.auctionDate).toISOString() : '',
+        }),
       });
 
       const data = await response.json();

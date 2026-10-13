@@ -7,6 +7,7 @@ import { Card, Button } from '@/components/ui';
 import { IAuction } from '@/types/Auction';
 import { getCategoryConfig, DEFAULT_TIMER_WARNING_PERCENT } from '@/lib/auctionConfig';
 import AuctionTimer from '@/components/ui/AuctionTimer';
+import TeamSquads from '@/components/auction/TeamSquads';
 import PlayerPhoto from '@/components/ui/PlayerPhoto';
 
 export default function PublicAuctionDetails() {
@@ -482,8 +483,8 @@ export default function PublicAuctionDetails() {
                 {(auction.status === 'live' || auction.status === 'completed') && auction.teams.length > 0 ? (
                     <Card className="mb-8">
                         <div className="p-4">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-2xl font-bold text-gray-900">AUCTION DETAILS</h3>
+                            <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
+                                <h3 className="text-xl sm:text-2xl font-bold text-gray-900">TEAMS &amp; SQUADS</h3>
                                 <Button
                                     variant="secondary"
                                     onClick={() => {
@@ -589,7 +590,10 @@ export default function PublicAuctionDetails() {
                                 </Button>
                             </div>
 
-                            <div id="public-auction-details-table" className="overflow-x-auto">
+                            <TeamSquads teams={auction.teams as any[]} storageKey={`squads-team-${auctionId}`} />
+
+                            {/* Print/Export source only (copied into the print window); not shown on screen */}
+                            <div id="public-auction-details-table" className="hidden">
                                 {auction.teams.map((team: any) => {
                                     // Sort players by transaction date (chronological order)
                                     const sortedPlayers = [...(team.players || [])].sort((a: any, b: any) => {
@@ -603,10 +607,10 @@ export default function PublicAuctionDetails() {
 
                                     return (
                                         <div key={team._id?.toString()} className="mb-8">
-                                            <table className="min-w-full border border-gray-300 mb-4">
+                                            <table className="min-w-full border border-gray-300 mb-4 text-gray-900">
                                                 <thead>
                                                     <tr className="bg-blue-600 text-white">
-                                                        <th colSpan={8} className="text-center py-3 text-lg font-bold">
+                                                        <th colSpan={7} className="text-center py-3 text-lg font-bold">
                                                             {team.title}
                                                         </th>
                                                     </tr>
@@ -618,7 +622,6 @@ export default function PublicAuctionDetails() {
                                                         <th className="px-4 py-2 text-right text-xs font-semibold text-gray-700">Total Points</th>
                                                         <th className="px-4 py-2 text-right text-xs font-semibold text-gray-700">Points Spent</th>
                                                         <th className="px-4 py-2 text-right text-xs font-semibold text-gray-700">Points Left</th>
-                                                        <th className="px-4 py-2 text-left text-xs font-semibold text-gray-700">Contact No</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -631,7 +634,6 @@ export default function PublicAuctionDetails() {
                                                         <td className="px-4 py-3 text-right font-bold">{team.totalPoints?.toLocaleString()}</td>
                                                         <td className="px-4 py-3 text-right">-</td>
                                                         <td className="px-4 py-3 text-right font-bold text-green-600">{team.totalPoints?.toLocaleString()}</td>
-                                                        <td className="px-4 py-3">-</td>
                                                     </tr>
 
                                                     {/* Captain Row */}
@@ -644,12 +646,11 @@ export default function PublicAuctionDetails() {
                                                             <td className="px-4 py-3 text-right font-bold">{runningPointsLeft.toLocaleString()}</td>
                                                             <td className="px-4 py-3 text-right">0</td>
                                                             <td className="px-4 py-3 text-right font-bold text-green-600">{runningPointsLeft.toLocaleString()}</td>
-                                                            <td className="px-4 py-3">-</td>
                                                         </tr>
                                                     )}
 
                                                     {/* Players Rows */}
-                                                    {sortedPlayers.map((player: any, index: number) => {
+                                                    {sortedPlayers.filter((player: any) => !(team.captain && player.category === 'Captain')).map((player: any, index: number) => {
                                                         const purchasePrice = player.purchasePrice || 0;
                                                         const pointsBeforePurchase = runningPointsLeft;
                                                         runningPointsLeft -= purchasePrice;
@@ -672,7 +673,6 @@ export default function PublicAuctionDetails() {
                                                                 <td className="px-4 py-3 text-right font-bold">{pointsBeforePurchase.toLocaleString()}</td>
                                                                 <td className="px-4 py-3 text-right font-semibold text-red-600">{purchasePrice.toLocaleString()}</td>
                                                                 <td className="px-4 py-3 text-right font-bold text-green-600">{runningPointsLeft.toLocaleString()}</td>
-                                                                <td className="px-4 py-3">{player.contactNo || '-'}</td>
                                                             </tr>
                                                         );
                                                     })}
@@ -680,7 +680,7 @@ export default function PublicAuctionDetails() {
                                                     {/* Empty row if no players yet */}
                                                     {sortedPlayers.length === 0 && (
                                                         <tr>
-                                                            <td colSpan={8} className="px-4 py-4 text-center text-gray-500">
+                                                            <td colSpan={7} className="px-4 py-4 text-center text-gray-500">
                                                                 No players purchased yet
                                                             </td>
                                                         </tr>
@@ -691,8 +691,7 @@ export default function PublicAuctionDetails() {
                                                         <td colSpan={4} className="px-4 py-3">Total Players: {sortedPlayers.length}</td>
                                                         <td className="px-4 py-3 text-right">Initial: {team.totalPoints?.toLocaleString()}</td>
                                                         <td className="px-4 py-3 text-right text-red-600">Spent: {(team.pointsSpent || 0).toLocaleString()}</td>
-                                                        <td className="px-4 py-3 text-right text-green-600">Remaining: {(team.pointsLeft || (team.totalPoints - team.pointsSpent)).toLocaleString()}</td>
-                                                        <td className="px-4 py-3"></td>
+                                                        <td className="px-4 py-3 text-right text-green-600">Remaining: {(team.pointsLeft ?? ((team.totalPoints || 0) - (team.pointsSpent || 0))).toLocaleString()}</td>
                                                     </tr>
                                                 </tbody>
                                             </table>

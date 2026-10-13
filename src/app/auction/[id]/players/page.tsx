@@ -142,6 +142,15 @@ export default function AuctionPlayerPool() {
             {auction.auctionDate && new Date(auction.auctionDate).toLocaleString('en-PK', { dateStyle: 'medium', timeStyle: 'short' })}
             {auction.event?.venue && ` · ${auction.event.venue}`}
           </p>
+          {auction.status === 'live' && (
+            <a
+              href={`/auction/${id}/details`}
+              className="mt-4 inline-flex items-center gap-2 rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-red-700"
+            >
+              <span className="h-2 w-2 rounded-full bg-white animate-pulse" />
+              Auction is LIVE — watch now
+            </a>
+          )}
         </header>
 
         {/* Summary + base prices */}
