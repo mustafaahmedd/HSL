@@ -12,6 +12,7 @@ export interface AuctionSummary {
   eventTitle?: string;
   venue?: string;
   poolCount: number;
+  soldCount: number;
   captainCount: number;
   teamCount: number;
   categories: { name: string; count: number; minBidPrice: number }[];
@@ -29,7 +30,7 @@ export async function getAuctionSummary(auctionId: string): Promise<AuctionSumma
 
   const [event, players, captains] = await Promise.all([
     Event.findById(auction.eventId, 'title venue').lean() as any,
-    Registration.find({ _id: { $in: auction.players }, approvedIconPlayer: { $ne: true } }, 'approvedCategory photoUrl').lean(),
+    Registration.find({ _id: { $in: auction.players }, approvedIconPlayer: { $ne: true } }, 'approvedCategory photoUrl auctionStatus teamName').lean(),
     Registration.find({ eventId: auction.eventId, approvedIconPlayer: true, status: 'approved' }, 'photoUrl').lean(),
   ]);
 
@@ -47,6 +48,7 @@ export async function getAuctionSummary(auctionId: string): Promise<AuctionSumma
     eventTitle: event?.title,
     venue: event?.venue,
     poolCount: players.length,
+    soldCount: players.filter((p: any) => p.auctionStatus === 'sold' && p.teamName).length,
     captainCount: captains.length,
     teamCount: (auction.teams || []).length,
     categories: settings.map(c => ({
