@@ -13,9 +13,11 @@ const pkr = (n?: number) => `PKR ${(n || 0).toLocaleString()}`;
 const pointsLeftOf = (t: any) => t.pointsLeft ?? ((t.totalPoints || 0) - (t.pointsSpent || 0));
 
 // Public, mobile-first view of every team's squad: captain, purchases (in order) and purse.
-// A team picker lets a captain/owner jump to their own team; the choice is remembered on the device.
-export default function TeamSquads({ teams, storageKey }: { teams: any[]; storageKey: string }) {
+// A team picker lets a captain/owner jump to their own team (remembered on the device), and a search
+// finds any player: which team bought them and for how much, or that they're still unsold.
+export default function TeamSquads({ teams, players = [], storageKey }: { teams: any[]; players?: any[]; storageKey: string }) {
   const [selected, setSelected] = useState<string>('all');
+  const [query, setQuery] = useState('');
 
   useEffect(() => {
     try {
@@ -35,8 +37,85 @@ export default function TeamSquads({ teams, storageKey }: { teams: any[]; storag
   );
   const visible = selected === 'all' ? sortedTeams : sortedTeams.filter(t => t._id?.toString() === selected);
 
+  // Everyone searchable: team rosters (incl. captains) plus pool players not bought yet
+  const directory = useMemo(() => {
+    const rows: { key: string; name: string; category?: string; role?: string; teamId?: string; teamTitle?: string; price?: number }[] = [];
+    const seen = new Set<string>();
+    for (const t of sortedTeams) {
+      for (const p of t.players || []) {
+        const name = p.playerName || '';
+        seen.add(name.toLowerCase());
+        rows.push({ key: `${t._id}-${p.registrationId || name}`, name, category: p.category, role: p.playerRole, teamId: t._id?.toString(), teamTitle: t.title, price: p.purchasePrice });
+      }
+    }
+    for (const p of players) {
+      const name = p.name || '';
+      if (!name || seen.has(name.toLowerCase())) continue;
+      rows.push({ key: String(p._id), name, category: p.approvedIconPlayer ? 'Captain' : p.approvedCategory, role: p.playerRole });
+    }
+    return rows;
+  }, [sortedTeams, players]);
+
+  const q = query.trim().toLowerCase();
+  const results = q ? directory.filter(r => r.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name)) : [];
+
   return (
     <div className="text-gray-900">
+      {/* Player search */}
+      <div className="relative mb-3">
+        <svg className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
+        </svg>
+        <input
+          type="search"
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search a player…"
+          // globals.css styles inputs unlayered; keep this one explicit
+          style={{ backgroundColor: '#fff', color: '#111827' }}
+          className="w-full rounded-lg border border-gray-300 py-2.5 pl-9 pr-3 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+        />
+      </div>
+
+      {q && (
+        <div className="mb-4 rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="px-4 py-2 text-xs text-gray-500 bg-gray-50">
+            {results.length} result{results.length === 1 ? '' : 's'} for &ldquo;{query.trim()}&rdquo;
+          </div>
+          <ul className="divide-y divide-gray-100 max-h-80 overflow-y-auto">
+            {results.map(r => (
+              <li key={r.key}>
+                <button
+                  type="button"
+                  disabled={!r.teamId}
+                  onClick={() => { if (r.teamId) { choose(r.teamId); setQuery(''); } }}
+                  className="flex w-full items-start gap-3 px-4 py-2.5 text-left enabled:hover:bg-blue-50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="font-semibold text-gray-900 break-words">{r.name}</div>
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-gray-500">
+                      {r.category && <span className={`rounded px-1.5 py-0.5 font-medium ${TAG[r.category] || 'bg-gray-100 text-gray-700'}`}>{r.category}</span>}
+                      {r.role && <span>{r.role}</span>}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right text-sm">
+                    {r.teamId ? (
+                      <>
+                        <div className="font-semibold text-blue-700">Team {r.teamTitle}</div>
+                        <div className="text-xs text-gray-600">{r.category === 'Captain' ? 'Captain' : pkr(r.price)}</div>
+                      </>
+                    ) : (
+                      <span className="text-xs font-medium text-amber-700">Not sold yet</span>
+                    )}
+                  </div>
+                </button>
+              </li>
+            ))}
+            {results.length === 0 && <li className="px-4 py-6 text-center text-sm text-gray-500">No player matches</li>}
+          </ul>
+        </div>
+      )}
+
       {/* Team picker */}
       <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1 mb-4">
         {[{ _id: 'all', title: 'All teams' }, ...sortedTeams].map(t => {

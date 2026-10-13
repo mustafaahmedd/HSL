@@ -590,7 +590,7 @@ export default function PublicAuctionDetails() {
                                 </Button>
                             </div>
 
-                            <TeamSquads teams={auction.teams as any[]} storageKey={`squads-team-${auctionId}`} />
+                            <TeamSquads teams={auction.teams as any[]} players={auction.players as any[]} storageKey={`squads-team-${auctionId}`} />
 
                             {/* Print/Export source only (copied into the print window); not shown on screen */}
                             <div id="public-auction-details-table" className="hidden">
