@@ -17,6 +17,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  // Absolute base for Open Graph image/URLs in shared-link previews
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://hsl.hikmahinstitute.org.pk"),
   title: "Hikmah Student Life - HSL",
   description: "Official Sports & Activity Platform for Hikmah Institute",
 };

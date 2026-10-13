@@ -270,6 +270,10 @@ export default function AuctionManagement() {
         !auction?.teams.some((t: any) => (t._id || t).toString() === team._id?.toString())
     );
 
+    // Matching is done when there's nobody left to pair (no captains left, or no captain-less teams left)
+    const captainMatchingDone =
+        captainMatchingStatus.availableCaptains.length === 0 || captainMatchingStatus.unassignedTeams.length === 0;
+
     const handleStartAuction = async () => {
         const ok = await confirmDialog({
             title: 'Start the auction?',
@@ -866,7 +870,12 @@ export default function AuctionManagement() {
                     </div>
                     <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3">
                         {auction.status === 'upcoming' && (
-                            <Button className="w-full sm:w-auto bg-green-600! hover:bg-green-700!" onClick={handleStartAuction}>
+                            <Button
+                                className="w-full sm:w-auto bg-green-600! hover:bg-green-700!"
+                                onClick={handleStartAuction}
+                                disabled={!captainMatchingDone}
+                                title={captainMatchingDone ? undefined : 'Finish captain matching first'}
+                            >
                                 ▶ Start Auction
                             </Button>
                         )}
@@ -1112,9 +1121,12 @@ export default function AuctionManagement() {
                 {auction.status === 'upcoming' && (
                     <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border border-green-200 bg-green-50 p-4">
                         <p className="text-sm text-green-900">
-                            <span className="font-semibold">Bidding opens when the auction is started.</span> Match captains first, then start — the category picker and current-player panel appear here.
+                            <span className="font-semibold">Bidding opens when the auction is started.</span>{' '}
+                            {captainMatchingDone
+                                ? 'Captains are matched — start when ready; the category picker and current-player panel appear here.'
+                                : `Finish captain matching first: ${captainMatchingStatus.availableCaptains.length} captain(s) and ${captainMatchingStatus.unassignedTeams.length} team(s) still unmatched.`}
                         </p>
-                        <Button className="shrink-0 bg-green-600! hover:bg-green-700!" onClick={handleStartAuction}>▶ Start Auction</Button>
+                        <Button className="shrink-0 bg-green-600! hover:bg-green-700!" onClick={handleStartAuction} disabled={!captainMatchingDone}>▶ Start Auction</Button>
                     </div>
                 )}
 
